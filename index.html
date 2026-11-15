@@ -323,7 +323,7 @@
     // ============================================================================
     // CCS v8 core: data safety + three-way merge (spreadsheet-style live editing)
     // ============================================================================
-    const CCS_APP_VERSION = "9.2";
+    const CCS_APP_VERSION = "9.3";
     const ccsRid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
     const ccsEq = (a, b) => a === b || JSON.stringify(a) === JSON.stringify(b);
     const ccsClamp = (n, lo, hi, d) => (Number.isFinite(Number(n)) ? Math.min(hi, Math.max(lo, Number(n))) : d);
@@ -949,8 +949,8 @@
         : ['bg-gray-50 text-gray-500 border-gray-200', 'circle-notch', 'Opening…', 'Opening'];
       const u = auth.user;
       return (
-        <div className="no-print bg-gray-50 border-b border-gray-200 px-2 sm:px-4 py-1 flex items-center gap-1.5 sm:gap-2 text-[11px] flex-wrap">
-          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border font-bold ${chip[0]}`} role="status" aria-live="polite">
+        <div className="no-print bg-gray-50 border-b border-gray-200 px-2 lg:px-4 py-1.5 lg:py-1 flex items-center gap-1.5 sm:gap-2 text-[11px] flex-wrap">
+          <span className={`inline-flex flex-1 lg:flex-none justify-center items-center gap-1 px-2 py-1.5 lg:py-0.5 rounded-full border font-bold ${chip[0]}`} role="status" aria-live="polite">
             <i className={`fas fa-${chip[1]} ${st === 'saving' && hasCloud ? 'fa-spin' : ''}`}></i><span className="hidden sm:inline">{chip[2]}</span><span className="sm:hidden">{chip[3]}</span>
           </span>
           {hasCloud && cloud.role && <span className="hidden sm:inline px-1.5 py-0.5 rounded bg-white border border-gray-200 font-bold text-gray-600">{ROLE_LABEL[cloud.role]}</span>}
@@ -959,22 +959,22 @@
             {presence.length > 5 && <span className="pl-2 font-bold text-gray-500">+{presence.length - 5}</span>}
           </span>}
           {toastNotice && <span className="text-blue-700 font-semibold truncate">{toastNotice}</span>}
-          <span className="flex-1"></span>
-          {signedIn && !hasCloud && <button onClick={onSave} className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase rounded hidden md:flex items-center gap-1"><i className="fas fa-cloud-arrow-up"></i><span className="hidden sm:inline">Save to my library</span><span className="sm:hidden">Save</span></button>}
-          <button onClick={onLibrary} className="px-2 py-1 bg-white hover:bg-black hover:text-white border border-gray-300 font-bold rounded hidden md:flex items-center gap-1" title="My songs"><i className="fas fa-folder-open"></i><span className="hidden sm:inline">My songs</span></button>
-          <button onClick={onNotes} className={`px-2 py-1 border font-bold rounded flex items-center gap-1 ${notesOpen ? 'bg-black text-white border-black' : 'bg-white hover:bg-gray-100 border-gray-300'}`} title="Comments and private notes"><i className="fas fa-comment-dots"></i><span className="hidden sm:inline">Notes</span>{notesCount > 0 && <span className="bg-blue-600 text-white rounded-full px-1.5 text-[9px]">{notesCount}</span>}</button>
-          {signedIn && <button onClick={onSetlists} className="px-2 py-1 bg-white hover:bg-gray-100 border border-gray-300 font-bold rounded hidden md:flex items-center gap-1" title="Setlists"><i className="fas fa-list-ol"></i><span className="hidden sm:inline">Setlists</span></button>}
-          <button onClick={onExport} className="px-2 py-1 bg-white hover:bg-gray-100 border border-gray-300 font-bold rounded hidden md:flex items-center gap-1" title="Export and share as text"><i className="fas fa-file-export"></i><span className="hidden sm:inline">Export</span></button>
-          {hasCloud && <button onClick={onHistory} className="px-2 py-1 bg-white hover:bg-gray-100 border border-gray-300 font-bold rounded hidden md:flex items-center gap-1" title="Version history"><i className="fas fa-clock-rotate-left"></i><span className="hidden lg:inline">History</span></button>}
-          <button onClick={onShare} className="px-2.5 py-1 bg-black hover:bg-gray-800 text-white font-black uppercase rounded flex items-center gap-1" title="Share this song"><i className="fas fa-user-plus"></i><span>Share</span></button>
-          <AccountMenu auth={auth} signedIn={signedIn} onSignIn={onSignIn} wrapClass="hidden md:block" />
+          <span className="hidden lg:block flex-1"></span>
+          {signedIn && !hasCloud && <button onClick={onSave} className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase rounded hidden lg:flex items-center gap-1"><i className="fas fa-cloud-arrow-up"></i><span className="hidden sm:inline">Save to my library</span><span className="sm:hidden">Save</span></button>}
+          <button onClick={onLibrary} className="px-2 py-1 bg-white hover:bg-black hover:text-white border border-gray-300 font-bold rounded hidden lg:flex items-center gap-1" title="My songs"><i className="fas fa-folder-open"></i><span className="hidden sm:inline">My songs</span></button>
+          <button onClick={onNotes} className={`px-2 py-1.5 lg:py-1 border font-bold rounded flex flex-1 lg:flex-none justify-center items-center gap-1 ${notesOpen ? 'bg-black text-white border-black' : 'bg-white hover:bg-gray-100 border-gray-300'}`} title="Comments and private notes"><i className="fas fa-comment-dots"></i><span className="hidden sm:inline">Notes</span>{notesCount > 0 && <span className="bg-blue-600 text-white rounded-full px-1.5 text-[9px]">{notesCount}</span>}</button>
+          {signedIn && <button onClick={onSetlists} className="px-2 py-1 bg-white hover:bg-gray-100 border border-gray-300 font-bold rounded hidden lg:flex items-center gap-1" title="Setlists"><i className="fas fa-list-ol"></i><span className="hidden sm:inline">Setlists</span></button>}
+          <button onClick={onExport} className="px-2 py-1 bg-white hover:bg-gray-100 border border-gray-300 font-bold rounded hidden lg:flex items-center gap-1" title="Export and share as text"><i className="fas fa-file-export"></i><span className="hidden sm:inline">Export</span></button>
+          {hasCloud && <button onClick={onHistory} className="px-2 py-1 bg-white hover:bg-gray-100 border border-gray-300 font-bold rounded hidden lg:flex items-center gap-1" title="Version history"><i className="fas fa-clock-rotate-left"></i><span className="hidden lg:inline">History</span></button>}
+          <button onClick={onShare} className="px-2.5 py-1.5 lg:py-1 bg-black hover:bg-gray-800 text-white font-black uppercase rounded flex flex-1 lg:flex-none justify-center items-center gap-1" title="Share this song"><i className="fas fa-user-plus"></i><span>Share</span></button>
+          <AccountMenu auth={auth} signedIn={signedIn} onSignIn={onSignIn} wrapClass="hidden lg:block" />
           {readOnly && hasCloud && <div className="basis-full bg-amber-50 border border-amber-300 text-amber-900 rounded px-2 py-1 font-semibold flex items-center gap-2"><i className="fas fa-eye"></i>You can view and comment on this song, but not edit it.<button onClick={onCopyMine} className="ml-auto underline font-black">Make my own copy</button></div>}
         </div>
       );
     }
 
 
-    // ================= v9.2: account menu + "More" sheet (phone-first) =================
+    // ================= v9.3: account menu + "More" sheet (phone-first) =================
     function AccountMenu({ auth, signedIn, onSignIn, wrapClass }) {
       const [open, setOpen] = useState(false); const [delOpen, setDelOpen] = useState(false);
       const u = auth.user;
@@ -1014,7 +1014,7 @@
         </button>);
       const Group = ({ title, children }) => <div className="mb-4"><div className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1.5 px-1">{title}</div><div className="grid grid-cols-3 gap-2">{children}</div></div>;
       return ReactDOM.createPortal(
-        <div className="no-print md:hidden fixed inset-0 z-[110]" role="dialog" aria-label="More tools">
+        <div className="no-print lg:hidden fixed inset-0 z-[110]" role="dialog" aria-label="More tools">
           <div className="absolute inset-0 bg-black/40" onClick={onClose}></div>
           <div className="absolute inset-x-0 bottom-0 bg-white rounded-t-2xl border-t-4 border-black shadow-2xl max-h-[82vh] overflow-y-auto p-4 pb-8">
             <div className="flex items-center justify-between mb-3">
@@ -1580,6 +1580,7 @@
       addSong(id, user, song) { return slOps.edit(id, user, items => items.some(i => i.songId === song.id) ? items : items.concat([{ id: ccsRid(), songId: song.id, title: String(song.title || 'Untitled').slice(0, 120), artist: String(song.artist || '').slice(0, 120), key: String(song.key || '').slice(0, 10), tempo: String(song.tempo || '').slice(0, 5) }]).slice(0, 200)); },
       removeItem(id, user, itemId) { return slOps.edit(id, user, items => items.filter(i => i.id !== itemId)); },
       moveItem(id, user, itemId, dir) { return slOps.edit(id, user, items => { const i = items.findIndex(x => x.id === itemId), j = i + dir; if (i < 0 || j < 0 || j >= items.length) return items; const t = items[i]; items[i] = items[j]; items[j] = t; return items; }); },
+      reorder(id, user, from, to) { return slOps.edit(id, user, items => { if (from < 0 || to < 0 || from >= items.length || to >= items.length || from === to) return items; const t = items.splice(from, 1)[0]; items.splice(to, 0, t); return items; }); },
       rename(id, user, title) { return slOps.edit(id, user, items => items, { title: String(title || 'Setlist').slice(0, 120) }); },
       async setLinkRole(id, role) { const f = fbx(); await f.updateDoc(f.doc(f.db, SETLISTS, id), { linkRole: role }); },
       async join(id, user, role) { const f = fbx(); await f.updateDoc(f.doc(f.db, SETLISTS, id), { ['members.' + user.uid]: { role, name: userLabel(user), email: cleanEmail(user.email) }, memberUids: f.arrayUnion(user.uid) }); },
@@ -1622,30 +1623,56 @@
     }
 
     // thin bar under the toolbar while a setlist is active
-    function SetlistBar({ sl, cloudId, onPrev, onNext, onOpenList, onClose }) {
+    // ================= v9.3 setlist performance =================
+    function SetlistJump({ sl, cloudId, onPick, onClose }) {
+      const items = (sl && sl.items) || [];
+      return ReactDOM.createPortal(
+        <div className="no-print fixed inset-0 z-[120]" role="dialog" aria-label="Jump to song">
+          <div className="absolute inset-0 bg-black/50" onClick={onClose}></div>
+          <div className="absolute inset-x-0 bottom-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[28rem] bg-white rounded-t-2xl sm:rounded-2xl border-t-4 border-black shadow-2xl max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-gray-200">
+              <h3 className="text-sm font-black uppercase tracking-wider truncate"><i className="fas fa-list-ol mr-1.5"></i>{sl.title}</h3>
+              <button onClick={onClose} aria-label="Close list" className="p-2 -mr-2 text-gray-500 hover:text-black"><i className="fas fa-xmark"></i></button>
+            </div>
+            <ol className="overflow-y-auto p-2 pb-6">{items.map((it, i) => {
+              const cur = it.songId === cloudId;
+              return <li key={it.id}><button onClick={() => { onPick(it); onClose(); }} className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left active:scale-[.99] ${cur ? 'bg-indigo-700 text-white' : 'hover:bg-gray-100'}`}>
+                <span className={`w-7 text-center text-sm font-black ${cur ? 'text-white' : 'text-gray-400'}`}>{i + 1}</span>
+                <span className="flex-1 min-w-0"><span className="block font-black text-sm truncate">{it.title}</span><span className={`block text-[11px] truncate ${cur ? 'text-indigo-100' : 'text-gray-500'}`}>{[it.artist, it.key && ('Key ' + it.key), it.tempo && (it.tempo + ' BPM')].filter(Boolean).join(' · ')}</span></span>
+                {cur && <i className="fas fa-play text-xs"></i>}
+              </button></li>; })}
+              {items.length === 0 && <li className="p-6 text-center text-xs text-gray-500">This setlist is empty.</li>}
+            </ol>
+          </div>
+        </div>, document.body);
+    }
+
+    function SetlistBar({ sl, cloudId, onPrev, onNext, onOpenList, onJump, onPerform, onFullscreen, onClose }) {
       const items = (sl && sl.items) || []; const idx = items.findIndex(i => i.songId === cloudId);
       const prev = idx > 0 ? items[idx - 1] : null; const next = idx >= 0 && idx < items.length - 1 ? items[idx + 1] : (idx < 0 && items.length ? items[0] : null);
+      const B = 'h-9 min-w-[2.25rem] px-2 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1 active:scale-95 disabled:opacity-40';
       return (
-        <div className="no-print bg-indigo-50 border-b border-indigo-200 px-2 sm:px-4 py-1 flex items-center gap-2 text-[11px]" role="navigation" aria-label="Setlist navigation">
-          <i className="fas fa-list-ol text-indigo-700"></i>
-          <button onClick={onOpenList} className="font-black truncate max-w-[40%] hover:underline" title="Open setlist">{sl.title}</button>
-          <span className="text-indigo-900 font-bold">{idx >= 0 ? `${idx + 1} / ${items.length}` : `${items.length} songs`}</span>
-          <span className="flex-1"></span>
-          <button disabled={!prev} onClick={() => onPrev(prev)} className="px-2 py-1 rounded border border-indigo-300 bg-white font-bold disabled:opacity-40 hover:bg-indigo-100" title={prev ? 'Previous: ' + prev.title : 'Start of setlist'}><i className="fas fa-backward-step"></i><span className="hidden sm:inline"> Prev</span></button>
-          <button disabled={!next} onClick={() => onNext(next)} className="px-2 py-1 rounded bg-indigo-700 text-white font-black disabled:opacity-40 hover:bg-indigo-800 max-w-[45%] truncate" title={next ? 'Next: ' + next.title : 'End of setlist'}><span className="hidden sm:inline">Next: {next ? next.title : 'end'} </span><i className="fas fa-forward-step"></i></button>
-          <button onClick={onClose} className="px-1.5 py-1 hover:bg-indigo-100 rounded" aria-label="Close setlist"><i className="fas fa-xmark"></i></button>
+        <div className="no-print bg-indigo-50 border-b border-indigo-200 w-full px-2 py-1.5 flex items-center gap-1.5 text-[11px]" role="navigation" aria-label="Setlist navigation">
+          <button onClick={onJump} className={B + ' bg-white border-indigo-300 flex-1 min-w-0 justify-start'} title="Jump to any song in this setlist" aria-label="Jump to song">
+            <i className="fas fa-list-ol text-indigo-700"></i><span className="font-black truncate">{sl.title}</span><span className="text-indigo-900 font-black shrink-0">{idx >= 0 ? `${idx + 1}/${items.length}` : items.length}</span><i className="fas fa-chevron-down text-[9px] text-indigo-500"></i>
+          </button>
+          <button disabled={!prev} onClick={() => onPrev(prev)} className={B + ' bg-white border-indigo-300 hover:bg-indigo-100'} title={prev ? 'Previous: ' + prev.title : 'Start of setlist'} aria-label="Previous song"><i className="fas fa-backward-step"></i><span className="hidden sm:inline">Prev</span></button>
+          <button disabled={!next} onClick={() => onNext(next)} className={B + ' bg-indigo-700 border-indigo-700 text-white font-black hover:bg-indigo-800'} title={next ? 'Next: ' + next.title : 'End of setlist'} aria-label="Next song"><span className="hidden sm:inline">Next</span><i className="fas fa-forward-step"></i></button>
+          <button onClick={onPerform} className={B + ' bg-black border-black text-white'} title="Perform: full-screen gig view for this setlist" aria-label="Perform full screen"><i className="fas fa-expand"></i><span className="hidden sm:inline">Perform</span></button>
+          <button onClick={onOpenList} className={B + ' bg-white border-indigo-300 hover:bg-indigo-100'} title="Open setlist" aria-label="Edit setlist and order"><i className="fas fa-pen-to-square"></i></button>
+          <button onClick={onClose} className={B + ' bg-white border-indigo-300 hover:bg-indigo-100'} aria-label="Close setlist"><i className="fas fa-xmark"></i></button>
         </div>
       );
     }
 
-    function SetlistsModal({ onClose, user, setlists, activeId, onActivate, onOpenSong, librarySongs, currentSong, onToast, onError, startId }) {
+    function SetlistsModal({ onClose, user, setlists, activeId, onActivate, onOpenSong, onPerform, librarySongs, currentSong, onToast, onError, startId }) {
       const [openId, setOpenId] = useState(startId || null);
       const [newTitle, setNewTitle] = useState(''); const [busy, setBusy] = useState(false);
       const st = useSetlist(user, openId); const sl = st.data;
       const myRole = sl && sl.members && sl.members[user.uid] ? sl.members[user.uid].role : null;
       const canEdit = myRole === 'owner' || myRole === 'editor'; const isOwner = myRole === 'owner';
       const run = async (fn, ok) => { setBusy(true); try { const r = await fn(); if (ok) onToast(typeof ok === 'function' ? ok(r) : ok); } catch (e) { onError(friendlyError(e)); } finally { setBusy(false); } };
-      const [pick, setPick] = useState(''); const [title, setTitle] = useState('');
+      const [pick, setPick] = useState(''); const [title, setTitle] = useState(''); const [drag, setDrag] = useState(null);
       useEffect(() => { setTitle(sl ? sl.title : ''); }, [sl && sl.id, sl && sl.title]);
       const inList = new Set(((sl && sl.items) || []).map(i => i.songId));
       const addable = (librarySongs || []).filter(s => !inList.has(s.id));
@@ -1680,11 +1707,17 @@
           </div>
           <div className="flex flex-wrap gap-2 mb-3">
             <button disabled={!items.length} onClick={() => { onActivate(sl.id); onOpenSong(items[0].songId); }} className="px-3 py-1.5 bg-indigo-700 hover:bg-indigo-800 disabled:opacity-50 text-white font-black text-[11px] uppercase rounded flex items-center gap-1"><i className="fas fa-play"></i> Play from the top</button>
+            <button disabled={!items.length || !onPerform} onClick={() => onPerform(sl.id, items[0].songId)} className="px-3 py-1.5 bg-black hover:bg-gray-800 disabled:opacity-50 text-white font-black text-[11px] uppercase rounded flex items-center gap-1" title="Open the first song in full-screen gig mode"><i className="fas fa-guitar"></i> Perform</button>
             <button onClick={() => { onActivate(activeId === sl.id ? null : sl.id); onToast(activeId === sl.id ? 'Setlist closed' : 'Setlist active: use Prev / Next under the toolbar'); }} className="px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-100 font-bold text-[11px] uppercase rounded">{activeId === sl.id ? 'Close setlist' : 'Make active'}</button>
           </div>
           {items.length === 0 && <div className="text-xs text-gray-500 bg-gray-50 border border-dashed border-gray-300 rounded p-4 mb-3 text-center">Empty. Add songs from your library below.</div>}
           <ol className="divide-y divide-gray-100 mb-3">{items.map((it, i) => (
-            <li key={it.id} className="flex items-center gap-2 py-1.5">
+            <li key={it.id} data-slidx={i} className={`flex items-center gap-1 sm:gap-2 py-1.5 ${drag && drag.over === i && drag.from !== i ? 'bg-indigo-100 ring-2 ring-indigo-400 rounded' : ''} ${drag && drag.from === i ? 'opacity-50' : ''}`}>
+              {canEdit && items.length > 1 ? <span role="button" aria-label={'Drag to reorder ' + it.title} title="Hold and drag to reorder" className="p-2 -ml-1 cursor-grab touch-none text-gray-400 hover:text-black select-none"
+                onPointerDown={e => { try { e.currentTarget.setPointerCapture(e.pointerId); } catch (x) {} setDrag({ from: i, over: i }); }}
+                onPointerMove={e => { if (!drag || drag.from !== i) return; const el = document.elementFromPoint(e.clientX, e.clientY); const li = el && el.closest ? el.closest('[data-slidx]') : null; if (li) { const o = +li.getAttribute('data-slidx'); if (o !== drag.over) setDrag({ from: i, over: o }); } }}
+                onPointerUp={() => { const d = drag; setDrag(null); if (d && d.from === i && d.over !== d.from) run(() => slOps.reorder(sl.id, user, d.from, d.over)); }}
+                onPointerCancel={() => setDrag(null)}><i className="fas fa-grip-vertical"></i></span> : null}
               <span className="w-6 text-center text-xs font-black text-gray-400">{i + 1}</span>
               <button onClick={() => { onActivate(sl.id); onOpenSong(it.songId); }} className="flex-1 min-w-0 text-left"><div className="font-black text-sm truncate">{it.title}</div><div className="text-[11px] text-gray-500 truncate">{[it.artist, it.key && ('Key ' + it.key), it.tempo && (it.tempo + ' bpm')].filter(Boolean).join(' · ')}</div></button>
               {canEdit && <><button disabled={busy || i === 0} onClick={() => run(() => slOps.moveItem(sl.id, user, it.id, -1))} className="p-1.5 hover:bg-gray-200 rounded disabled:opacity-30" aria-label={'Move ' + it.title + ' up'}><i className="fas fa-arrow-up"></i></button>
@@ -1725,13 +1758,15 @@
     // ======================================================================
     const CCS_PDFJS_VERSION = '6.2.108';
     const CCS_CDN = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@' + CCS_PDFJS_VERSION + '/build/';
+    // Built with the Function constructor on purpose: the in-page Babel compiler rewrites a literal import() into require(), which does not exist in a browser.
+    const ccsDynImport = u => (new Function('u', 'return import(u)'))(u);
     let ccsPdfJsPromise = null;
     const ccsB64Bytes = id => { const el = document.getElementById(id); if (!el) return null; const bin = atob(el.textContent.trim()); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; };
     // pdf.js and its worker are loaded as Blob URLs, so it works from a plain file, any host, and with a CDN (a cross-origin worker is not allowed directly).
     async function ccsPdfJsFrom(getMain, getWorker) {
       const main = await getMain(), worker = await getWorker();
       const mUrl = URL.createObjectURL(new Blob([main], { type: 'text/javascript' })), wUrl = URL.createObjectURL(new Blob([worker], { type: 'text/javascript' }));
-      const mod = await import(/* @vite-ignore */ mUrl);
+      const mod = await ccsDynImport(mUrl);
       const lib = mod.getDocument ? mod : (mod.default || mod);
       lib.GlobalWorkerOptions.workerSrc = wUrl; return lib;
     }
@@ -1744,6 +1779,7 @@
           () => ccsPdfJsFrom(() => { const m = ccsB64Bytes('ccs-pdfjs-main'); if (!m) throw new Error('no inline copy'); return m; }, () => ccsB64Bytes('ccs-pdfjs-worker')),
           () => ccsPdfJsFrom(() => fetchBuf(new URL('vendor/pdf.min.mjs', document.baseURI).href), () => fetchBuf(new URL('vendor/pdf.worker.min.mjs', document.baseURI).href)),
           () => ccsPdfJsFrom(() => fetchBuf(CCS_CDN + 'pdf.min.mjs'), () => fetchBuf(CCS_CDN + 'pdf.worker.min.mjs')),
+          () => ccsPdfJsFrom(() => fetchBuf(CCS_CDN + '../legacy/build/pdf.min.mjs'), () => fetchBuf(CCS_CDN + '../legacy/build/pdf.worker.min.mjs')),
         ];
         for (const t of tries) { try { return await t(); } catch (e) { errs.push(String(e && e.message || e)); } }
         ccsPdfJsPromise = null; const e = new Error('pdfjs-load'); e.detail = errs.join(' | '); throw e;
@@ -2200,7 +2236,7 @@
     }
 
     // ======================================================================
-    // v9.2 MusicXML import (.musicxml / .xml / compressed .mxl)
+    // v9.3 MusicXML import (.musicxml / .xml / compressed .mxl)
     // ======================================================================
     async function ccsUnzipEntry(buf, pick) {
       const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength); let eocd = -1;
@@ -2457,7 +2493,7 @@
       );
     }
 
-    // ================= v9.2 image import (JPG / PNG / WebP) =================
+    // ================= v9.3 image import (JPG / PNG / WebP) =================
     async function ccsFileToCanvas(file, maxW) {
       let bmp = null;
       try { bmp = await createImageBitmap(file); } catch (e) {
@@ -2533,7 +2569,7 @@
     }
 
     function ChordChartEditor() {
-      const APP_VERSION = "9.2";
+      const APP_VERSION = "9.3";
 
       // 1. App State
       const [songState, setSongState] = useState(() => ({ past: [], present: ccsLoadDraft() || getFreshSong(), future: [] }));
@@ -2684,7 +2720,7 @@
       const [showSetlists, setShowSetlists] = useState(false); const [showExport, setShowExport] = useState(false);
       const [setlistId, setSetlistIdRaw] = useState(() => { try { return localStorage.getItem('ccs_setlist') || null; } catch (e) { return null; } });
       const setSetlistId = (id) => { setSetlistIdRaw(id); try { if (id) localStorage.setItem('ccs_setlist', id); else localStorage.removeItem('ccs_setlist'); } catch (e) {} };
-      const slLists = useSetlists(user); const activeSl = useSetlist(user, setlistId);
+      const slLists = useSetlists(user); const activeSl = useSetlist(user, setlistId); const [showJump, setShowJump] = useState(false); const slNavRef = useRef({});
       const slBootRef = useRef(false); const [slStart, setSlStart] = useState(null);
       useEffect(() => {
         if (!user || slBootRef.current) return; const sid = new URLSearchParams(window.location.search).get('setlist'); if (!sid) return; slBootRef.current = true;
@@ -2847,6 +2883,27 @@
         setCloudId(null); setActiveBarInfo(null); setEditingBarProps(null);
         setSongState({ past: [], present: s, future: [] }); setShowSetlistModal(false);
       };
+      const performSetlist = async (slId, songId) => {
+        setSetlistId(slId); setShowSetlists(false); setSlStart(null);
+        await openCloudSong(songId); setIsGigMode(true); setShowTools(false); setGigFitMode('fit');
+        try { const el = document.documentElement; if (!document.fullscreenElement && el.requestFullscreen) { const r = el.requestFullscreen(); if (r && r.catch) r.catch(() => {}); } } catch (e) {}
+      };
+      const slItemsNow = (user && setlistId && activeSl.data && activeSl.data.items) || [];
+      const slIxNow = slItemsNow.findIndex(i => i.songId === cloudId);
+      slNavRef.current = { prev: slIxNow > 0 ? slItemsNow[slIxNow - 1] : null, next: slIxNow >= 0 && slIxNow < slItemsNow.length - 1 ? slItemsNow[slIxNow + 1] : null, go: openCloudSong };
+      // warm the neighbouring songs so Next / Previous is instant, and start each song at the top
+      useEffect(() => { const n = slNavRef.current; [n.prev, n.next].forEach(it => { if (it) { try { Promise.resolve(ccsOps.getSong(it.songId)).catch(() => {}); } catch (e) {} } }); }, [cloudId, setlistId, slItemsNow.length]);
+      useEffect(() => { if (isGigMode && containerRef.current) { try { containerRef.current.scrollTop = 0; } catch (e) {} setCurrentGigPageIndex(0); } }, [cloudId]);
+      // swipe left / right in gig mode = next / previous song
+      useEffect(() => {
+        if (!isGigMode) return;
+        let st = null;
+        const ts = e => { st = (e.touches.length === 1 && !(e.target.closest && e.target.closest('.gig-controls-bar'))) ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() } : null; };
+        const te = e => { if (!st || !e.changedTouches.length) return; const dx = e.changedTouches[0].clientX - st.x, dy = e.changedTouches[0].clientY - st.y, dt = Date.now() - st.t; st = null;
+          if (Math.abs(dx) > 110 && Math.abs(dy) < 50 && Math.abs(dx) > 2.5 * Math.abs(dy) && dt < 700) { const n = slNavRef.current; const it = dx < 0 ? n.next : n.prev; if (it && n.go) n.go(it.songId); } };
+        window.addEventListener('touchstart', ts, { passive: true }); window.addEventListener('touchend', te, { passive: true });
+        return () => { window.removeEventListener('touchstart', ts); window.removeEventListener('touchend', te); };
+      }, [isGigMode]);
       const newSong = async () => {
         try { if (cloudIdRef.current) await cloud.flushNow(); else stashCurrent(); } catch (e) {}
         setCloudId(null); setActiveBarInfo(null); setEditingBarProps(null); setShowSetlistModal(false);
@@ -3874,6 +3931,10 @@
         const handleGigKeys = (e) => {
             if (!isGigMode) return;
             resetGigControlsTimer();
+            const nv = slNavRef.current || {}; const cEl = containerRef.current;
+            if (e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) { e.preventDefault(); const it = e.key === 'ArrowRight' ? nv.next : nv.prev; if (it && nv.go) nv.go(it.songId); return; }
+            if (['PageDown', 'ArrowRight', 'ArrowDown', ' '].includes(e.key) && cEl && nv.next && !e.repeat && Date.now() - (window.__ccsNavT || 0) > 700 && cEl.scrollTop + cEl.clientHeight >= cEl.scrollHeight - 6) { e.preventDefault(); window.__ccsNavT = Date.now(); nv.go(nv.next.songId); return; }
+            if (['PageUp', 'ArrowLeft', 'ArrowUp'].includes(e.key) && cEl && nv.prev && !e.repeat && Date.now() - (window.__ccsNavT || 0) > 700 && cEl.scrollTop <= 2) { e.preventDefault(); window.__ccsNavT = Date.now(); nv.go(nv.prev.songId); return; }
             if (['PageDown', 'ArrowRight', 'ArrowDown', ' '].includes(e.key)) {
                 e.preventDefault(); containerRef.current.scrollBy({ top: window.innerHeight * 0.85, behavior: 'smooth' });
             } else if (['PageUp', 'ArrowLeft', 'ArrowUp'].includes(e.key)) {
@@ -4443,7 +4504,7 @@
           {!isGigMode && (
           <header className="no-print bg-white border-b border-gray-200 z-30 shadow-xs flex-shrink-0">
             {/* Primary Top Bar (Symmetrical, Compact & Sophisticated - Item 1) */}
-            <div className="h-11 sm:h-12 px-2 sm:px-4 flex items-center justify-between gap-1.5 sm:gap-2 max-w-full">
+            <div className="h-12 px-2 lg:px-4 flex items-center justify-between gap-1.5 sm:gap-2 max-w-full">
               
               {/* Left: Branding & Sidebar Toggle */}
               <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -4465,7 +4526,7 @@
               </div>
 
               {/* Center / Upfront Core Actions: Symmetrical and Balanced (Visible on Desktop/Tablet) */}
-              <div className="hidden md:flex items-center gap-1.5">
+              <div className="hidden lg:flex items-center gap-1.5">
                 {/* Upfront New / Clear Button */}
                 <button 
                   onClick={resetSheet} 
@@ -4618,7 +4679,7 @@
               <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                 
                 {/* On mobile: Upfront Undo/Redo, New, and Save with Cloud Priority */}
-                <div className="flex md:hidden items-center gap-1">
+                <div className="flex lg:hidden items-center gap-1">
                   <div className="flex items-center bg-gray-100 rounded border border-gray-200 p-0.5">
                     <button onClick={undo} disabled={songState.past.length === 0} className="p-1 hover:bg-white rounded text-gray-700 disabled:opacity-30 transition-colors" title="Undo"><Icons.Undo size={10} /></button>
                     <div className="w-px h-2.5 bg-gray-300 mx-0.5"></div>
@@ -4651,7 +4712,7 @@
                       <i className="fas fa-chevron-down text-[8px]"></i>
                     </button>
                     {showSaveDropdown && (
-                      <div className="md:hidden absolute right-0 top-full mt-1.5 w-56 bg-white border border-gray-200 rounded-lg shadow-xl py-1.5 z-50 text-left animate-in fade-in zoom-in-95">
+                      <div className="lg:hidden absolute right-0 top-full mt-1.5 w-56 bg-white border border-gray-200 rounded-lg shadow-xl py-1.5 z-50 text-left animate-in fade-in zoom-in-95">
                         <button 
                           onClick={() => { setShowSaveDropdown(false); saveToCloud(); }} 
                           className="w-full px-3 py-2 text-left hover:bg-blue-50 flex items-start gap-2.5 text-xs font-bold text-gray-800 border-b border-gray-100 transition-colors"
@@ -4680,12 +4741,12 @@
                   </div>
                 </div>
 
-                <div className="flex md:hidden items-center gap-1.5 ml-0.5">
+                <div className="flex lg:hidden items-center gap-1.5 ml-0.5">
                   <button onClick={() => setShowMore(true)} aria-label="Open menu" className="px-2.5 py-1.5 rounded-md border border-gray-300 bg-gray-100 text-gray-800 hover:bg-black hover:text-white"><i className="fas fa-ellipsis"></i></button>
                   <AccountMenu auth={ccs.auth} signedIn={!!user} onSignIn={() => ccs.auth.leaveGuest && ccs.auth.leaveGuest()} />
                 </div>
                 {/* MIDI Input Toggle (Desktop & Mobile) */}
-                <div data-more="midi" className="hidden md:flex items-center bg-gray-100 rounded-md border border-gray-200 p-0.5">
+                <div data-more="midi" className="hidden lg:flex items-center bg-gray-100 rounded-md border border-gray-200 p-0.5">
                   <button 
                     onClick={() => {
                       const next = !midiEnabled;
@@ -4731,7 +4792,7 @@
                 {/* On-Screen Keyboard Toggle */}
                 <button 
                   onClick={() => setShowChordKeyboard(prev => !prev)} 
-                  className={`hidden md:flex items-center gap-1 px-2 sm:px-2.5 py-1 text-xs font-bold uppercase rounded-md border transition-all ${showChordKeyboard ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-200'}`} 
+                  className={`hidden lg:flex items-center gap-1 px-2 sm:px-2.5 py-1 text-xs font-bold uppercase rounded-md border transition-all ${showChordKeyboard ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-200'}`} 
                   title="Toggle On-Screen Chord Keyboard"
                 >
                   <Icons.Keyboard size={12} />
@@ -4741,7 +4802,7 @@
                 {/* Gig Mode Button */}
                 <button 
                   onClick={() => { setIsGigMode(true); setShowTools(false); setGigFitMode('fit'); }} 
-                  className="hidden md:flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 text-xs font-black uppercase rounded-md bg-amber-400 hover:bg-amber-500 text-black shadow-xs transition-colors" 
+                  className="hidden lg:flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 text-xs font-black uppercase rounded-md bg-amber-400 hover:bg-amber-500 text-black shadow-xs transition-colors" 
                   title="Launch Fullscreen Gig Mode"
                 >
                   <Icons.Play size={10} />
@@ -4751,24 +4812,24 @@
                 {/* All Tools & Functions Menu Trigger */}
                 <button 
                   onClick={() => setShowAllToolsModal(true)} 
-                  className="hidden md:flex items-center gap-1 px-2 sm:px-2.5 py-1 text-xs font-bold uppercase rounded-md border border-gray-300 bg-gray-100 hover:bg-black hover:text-white transition-colors text-gray-800"
+                  className="hidden lg:flex items-center gap-1 px-2 sm:px-2.5 py-1 text-xs font-bold uppercase rounded-md border border-gray-300 bg-gray-100 hover:bg-black hover:text-white transition-colors text-gray-800"
                   title="All Tools & Functions Menu"
                 >
                   <i className="fas fa-th-large text-[11px]"></i>
-                  <span className="hidden md:inline">Tools</span>
+                  <span className="hidden lg:inline">Tools</span>
                 </button>
 
                 {/* Focus Mode Toggle (Folds/unfolds secondary ribbon to maximize chart screen space) */}
                 <button 
                   onClick={() => setFocusMode(f => !f)} 
-                  className={`hidden md:block p-1.5 rounded-md border transition-colors ${focusMode ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-200'}`} 
+                  className={`hidden lg:block p-1.5 rounded-md border transition-colors ${focusMode ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-200'}`} 
                   title={focusMode ? "Show Tools Ribbon" : "Focus Mode (Hide Ribbon for Full Chart View)"}
                 >
                   <i className={`fas ${focusMode ? 'fa-chevron-down' : 'fa-chevron-up'} text-[11px]`}></i>
                 </button>
 
                 {/* Settings & Info (Desktop) */}
-                <button onClick={() => setShowSettings(true)} className="hidden md:block p-1.5 hover:bg-black hover:text-white rounded-md border border-gray-200 bg-gray-100 transition-colors text-gray-700" title="Preferences">
+                <button onClick={() => setShowSettings(true)} className="hidden lg:block p-1.5 hover:bg-black hover:text-white rounded-md border border-gray-200 bg-gray-100 transition-colors text-gray-700" title="Preferences">
                   <Icons.Settings size={13} />
                 </button>
               </div>
@@ -4776,7 +4837,7 @@
 
             {/* Secondary Action Ribbon or Focus Mode Strip (Item 1) */}
             {!focusMode ? (
-              <div className="relative px-2 sm:px-4 py-1 bg-gray-50/90 border-t border-gray-200 flex items-center justify-between text-[11px]">
+              <div className="relative px-2 lg:px-4 py-1.5 lg:py-1 bg-gray-50/90 border-t border-gray-200 flex items-center justify-between text-[11px]">
                 {/* Mobile Scroll Helpers */}
                 <button 
                   onClick={() => scrollRibbon(-180)} 
@@ -4788,7 +4849,7 @@
 
                 {/* Scrollable Ribbon Body */}
                 <div ref={ribbonScrollRef} className="flex-1 flex items-center justify-between gap-2 overflow-x-auto no-scrollbar scroll-smooth">
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="grid grid-cols-3 gap-1.5 w-full lg:flex lg:w-auto lg:items-center shrink-0">
                     {/* Mobile File Actions (Open & Demo right in ribbon so they are never missing!) */}
                     <div className="hidden items-center gap-1">
                       <button 
@@ -4816,7 +4877,7 @@
 
 
                     {/* Draw Tools in Ribbon (Both Pencil & Handwriting to Typing) */}
-                    <div className="flex items-center bg-white border border-gray-200 rounded p-0.5">
+                    <div className="flex items-center justify-around lg:justify-start bg-white border border-gray-200 rounded p-0.5 min-h-[36px] lg:min-h-0">
                       <button 
                         onClick={() => {
                           if (stylusMode && freehandMode) { setStylusMode(false); setFreehandMode(false); showToast("Pencil Draw OFF"); }
@@ -4843,13 +4904,13 @@
                     </div>
 
                     {/* Pages Button */}
-                    <button onClick={() => setShowPagesModal(true)} className="hidden md:flex items-center gap-1 px-2 py-0.5 bg-white border border-gray-200 rounded text-gray-700 font-bold hover:bg-gray-100 transition-colors">
+                    <button onClick={() => setShowPagesModal(true)} className="hidden lg:flex items-center gap-1 px-2 py-0.5 bg-white border border-gray-200 rounded text-gray-700 font-bold hover:bg-gray-100 transition-colors">
                       <Icons.FileAlt size={10} />
                       <span>Pages ({pagesArray.length})</span>
                     </button>
 
                     {/* Capo */}
-                    <div className="flex items-center bg-white border border-gray-200 rounded px-1.5 py-0.5 font-bold text-gray-700">
+                    <div className="flex items-center justify-center lg:justify-start bg-white border border-gray-200 rounded px-1.5 py-0.5 font-bold text-gray-700 min-h-[36px] lg:min-h-0">
                       <span className="text-gray-400 text-[10px] mr-1">Capo:</span>
                       <select value={capo} onChange={e=>setCapo(Number(e.target.value))} className="bg-transparent font-bold uppercase outline-none cursor-pointer">
                         <option value={0}>0</option>
@@ -4858,7 +4919,7 @@
                     </div>
 
                     {/* NNS & EZ Mode */}
-                    <div className="flex items-center bg-white border border-gray-200 rounded p-0.5">
+                    <div className="flex items-center justify-around lg:justify-start bg-white border border-gray-200 rounded p-0.5 min-h-[36px] lg:min-h-0">
                       <select aria-label="Chord notation" title="Chord notation" value={displayMode} onChange={e => setDisplayMode(e.target.value)} className={`px-1 py-0.5 font-bold rounded text-[11px] outline-none cursor-pointer ${displayMode !== 'standard' ? 'bg-black text-white' : 'bg-white text-gray-600'}`}>{CCS_NOTATIONS.map(n => <option key={n[0]} value={n[0]}>{n[0] === 'standard' ? 'ABC' : n[0] === 'nns' ? 'NNS 123' : n[0] === 'roman' ? 'Roman I-V' : n[0] === 'solfege' ? 'Do Re Mi' : 'Sargam'}</option>)}</select>
                       <div className="w-px h-2.5 bg-gray-200 mx-0.5"></div>
                       <button onClick={() => setSimplifyMode(!simplifyMode)} className={`px-1.5 py-0.5 font-bold rounded transition-colors ${simplifyMode?'bg-blue-100 text-blue-700':'hover:bg-gray-100 text-gray-600'}`} title="Simplify Complex Chords">EZ</button>
@@ -4866,7 +4927,7 @@
                   </div>
 
                   {/* Right: Export & Import Actions (ALL visible on mobile!) */}
-                  <div className="hidden md:flex items-center gap-1.5 shrink-0 ml-auto pl-2">
+                  <div className="hidden lg:flex items-center gap-1.5 shrink-0 ml-auto pl-2">
                     <button onClick={() => setShowImportModal(true)} className="flex items-center gap-1 px-2 py-0.5 bg-white border border-gray-200 rounded font-bold text-gray-700 hover:bg-gray-100 transition-colors" title="Auto-Import Text Chords">
                       <Icons.Upload size={10} />
                       <span>Import</span>
@@ -4923,10 +4984,11 @@
               onLibrary={() => setShowSetlistModal(true)} onShare={() => setShowLiveBandModal(true)} onNotes={() => setShowNotes(v => !v)} onSetlists={() => setShowSetlists(true)} onExport={() => setShowExport(true)} notesOpen={showNotes} notesCount={notesCount}
               onHistory={() => setShowHistory(true)} onSave={saveToCloud} onSignIn={() => ccs.auth.leaveGuest && ccs.auth.leaveGuest()} toastNotice={remoteNotice}
               onCopyMine={async () => { const id = await copyAsMine(songRef.current); if (id) openCloudSong(id); }} />
-            {user && setlistId && activeSl.data && <SetlistBar sl={activeSl.data} cloudId={cloudId} onPrev={it => it && openCloudSong(it.songId)} onNext={it => it && openCloudSong(it.songId)} onOpenList={() => { setSlStart(setlistId); setShowSetlists(true); }} onClose={() => setSetlistId(null)} />}
+            {user && setlistId && activeSl.data && <SetlistBar sl={activeSl.data} cloudId={cloudId} onPrev={it => it && openCloudSong(it.songId)} onNext={it => it && openCloudSong(it.songId)} onOpenList={() => { setSlStart(setlistId); setShowSetlists(true); }} onJump={() => setShowJump(true)} onPerform={() => { setIsGigMode(true); setShowTools(false); setGigFitMode('fit'); try { const el = document.documentElement; if (!document.fullscreenElement && el.requestFullscreen) { const r = el.requestFullscreen(); if (r && r.catch) r.catch(() => {}); } } catch (e) {} }} onClose={() => setSetlistId(null)} />}
           </header>
           )}
 
+          {showJump && user && setlistId && activeSl.data && <SetlistJump sl={activeSl.data} cloudId={cloudId} onPick={it => openCloudSong(it.songId)} onClose={() => setShowJump(false)} />}
           {/* Gig Mode Floating Smart Controls Bar (Item 2) */}
           {isGigMode && (
               <div 
@@ -4955,7 +5017,7 @@
 
                   {user && setlistId && activeSl.data && (() => { const its = activeSl.data.items || []; const ix = its.findIndex(i => i.songId === cloudId); const pv = ix > 0 ? its[ix - 1] : null; const nx = ix >= 0 && ix < its.length - 1 ? its[ix + 1] : null; return (<>
                     <button disabled={!pv} onClick={() => pv && openCloudSong(pv.songId)} className="px-2 py-1.5 rounded-full hover:bg-gray-500/20 text-xs font-bold disabled:opacity-30" title={pv ? 'Previous song: ' + pv.title : 'First song'}><i className="fas fa-backward-step"></i></button>
-                    <span className="text-[11px] font-black max-w-[8rem] truncate" title={activeSl.data.title}>{ix >= 0 ? `${ix + 1}/${its.length}` : 'Setlist'}</span>
+                    <button onClick={() => setShowJump(true)} className="px-2 py-1.5 rounded-full hover:bg-gray-500/20 text-[11px] font-black max-w-[8rem] truncate" title="Jump to any song in the setlist">{ix >= 0 ? `${ix + 1}/${its.length}` : 'Setlist'} <i className="fas fa-chevron-up text-[8px] ml-0.5"></i></button>
                     <button disabled={!nx} onClick={() => nx && openCloudSong(nx.songId)} className="px-2 py-1.5 rounded-full bg-indigo-600 text-white text-xs font-black disabled:opacity-30" title={nx ? 'Next song: ' + nx.title : 'Last song'}><i className="fas fa-forward-step"></i></button>
                     <div className="w-px h-4 bg-gray-500/40 mx-0.5"></div></>); })()}
                   {/* Gig Page Jumper */}
@@ -5514,7 +5576,7 @@
               </div>
           )}
 
-          {showSetlists && user && <SetlistsModal onClose={() => { setShowSetlists(false); setSlStart(null); }} user={user} setlists={slLists} activeId={setlistId} onActivate={setSetlistId} startId={slStart} onOpenSong={id => { setShowSetlists(false); openCloudSong(id); }} librarySongs={ccs.lib.songs} currentSong={cloudId ? (() => { const x = ccs.lib.songs.find(q => q.id === cloudId); return x || { id: cloudId, title: song.title, artist: song.artist, key: song.key, tempo: song.tempo }; })() : null} onToast={showToast} onError={m => setDialog({ type: 'alert', message: m })} />}
+          {showSetlists && user && <SetlistsModal onClose={() => { setShowSetlists(false); setSlStart(null); }} user={user} setlists={slLists} activeId={setlistId} onActivate={setSetlistId} startId={slStart} onPerform={performSetlist} onOpenSong={id => { setShowSetlists(false); openCloudSong(id); }} librarySongs={ccs.lib.songs} currentSong={cloudId ? (() => { const x = ccs.lib.songs.find(q => q.id === cloudId); return x || { id: cloudId, title: song.title, artist: song.artist, key: song.key, tempo: song.tempo }; })() : null} onToast={showToast} onError={m => setDialog({ type: 'alert', message: m })} />}
           {showExport && <ExportModal song={song} onClose={() => setShowExport(false)} onJSON={() => { setShowExport(false); saveJSON(); }} onToast={showToast} onError={m => setDialog({ type: 'alert', message: m })} />}
           {!isExporting && <StageTools tempo={song.tempo} onTempo={v => setSong(p => ({ ...p, tempo: v }))} canEdit={!isReadOnly} timeSig={song.timeSignature} getScrollEl={() => containerRef.current} gig={isGigMode} dark={isGigMode && gigTheme === 'dark'} />}
           {showSetlistModal && <LibraryModal onClose={() => setShowSetlistModal(false)} lib={ccs.lib} user={user} localSongs={localLib} currentCloudId={cloudId}
@@ -5758,7 +5820,7 @@
             </div>
           )}
 
-          {/* About Modal (Updated to Version 9.2) */}
+          {/* About Modal (Updated to Version 9.3) */}
           {showAbout && (
             <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4">
                 <div className="bg-white p-6 rounded shadow-2xl w-full max-w-sm flex flex-col border-4 border-black text-center relative">
@@ -6060,7 +6122,7 @@
 
                 {/* Modal Footer */}
                 <div className="px-4 py-2.5 border-t border-gray-200 bg-gray-50 flex items-center justify-between text-xs text-gray-500">
-                  <span>Chord Chart Studio Direct • v9.2</span>
+                  <span>Chord Chart Studio Direct • v9.3</span>
                   <button onClick={() => setShowAllToolsModal(false)} className="px-3 py-1 bg-black text-white font-bold rounded hover:bg-gray-800 transition-colors">
                     Done
                   </button>
