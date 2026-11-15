@@ -323,7 +323,7 @@
     // ============================================================================
     // CCS v8 core: data safety + three-way merge (spreadsheet-style live editing)
     // ============================================================================
-    const CCS_APP_VERSION = "9.3";
+    const CCS_APP_VERSION = "9.4";
     const ccsRid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
     const ccsEq = (a, b) => a === b || JSON.stringify(a) === JSON.stringify(b);
     const ccsClamp = (n, lo, hi, d) => (Number.isFinite(Number(n)) ? Math.min(hi, Math.max(lo, Number(n))) : d);
@@ -974,7 +974,7 @@
     }
 
 
-    // ================= v9.3: account menu + "More" sheet (phone-first) =================
+    // ================= v9.4: account menu + "More" sheet (phone-first) =================
     function AccountMenu({ auth, signedIn, onSignIn, wrapClass }) {
       const [open, setOpen] = useState(false); const [delOpen, setDelOpen] = useState(false);
       const u = auth.user;
@@ -1623,7 +1623,7 @@
     }
 
     // thin bar under the toolbar while a setlist is active
-    // ================= v9.3 setlist performance =================
+    // ================= v9.4 setlist performance =================
     function SetlistJump({ sl, cloudId, onPick, onClose }) {
       const items = (sl && sl.items) || [];
       return ReactDOM.createPortal(
@@ -2236,7 +2236,7 @@
     }
 
     // ======================================================================
-    // v9.3 MusicXML import (.musicxml / .xml / compressed .mxl)
+    // v9.4 MusicXML import (.musicxml / .xml / compressed .mxl)
     // ======================================================================
     async function ccsUnzipEntry(buf, pick) {
       const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength); let eocd = -1;
@@ -2396,17 +2396,19 @@
       const ex = await ccsPdfExtract(buf, (i, n) => onProgress && onProgress('Reading page ' + i + ' of ' + n, i / n * 0.6));
       let res = null;
       try { res = ccsPdfBuildSong(ex.pages, { fresh, fileName: file.name }); } catch (e) { console.warn('vector import failed', e); res = null; }
-      const n = Math.min(ex.pages.length, 12); const refs = [];
+      const n = Math.min(ex.pages.length, 12); const refs = []; const canv = [];
       const needScan = !res;
       for (let i = 0; i < n; i++) {
         onProgress && onProgress(needScan ? 'Analysing page ' + (i + 1) : 'Preparing page ' + (i + 1), 0.6 + 0.4 * (i / n));
-        const r = await ccsRenderPdfPage(ex.pages[i].page, needScan ? 1400 : 900, 0.72);
+        const r = await ccsRenderPdfPage(ex.pages[i].page, needScan ? 1800 : 900, 0.72);
         refs.push(r.url);
-        if (needScan) { const id = r.ctx.getImageData(0, 0, r.cv.width, r.cv.height); ex.pages[i].scan = ccsScanAnalyse({ data: id.data, width: id.width, height: id.height }); }
+        if (needScan) { const id = r.ctx.getImageData(0, 0, r.cv.width, r.cv.height); ex.pages[i].scan = ccsScanAnalyse({ data: id.data, width: id.width, height: id.height }); canv.push({ w: r.cv.width, h: r.cv.height, cv: r.cv }); }
       }
       if (needScan) {
         const song = fresh(); song.sections = []; song.title = ccsTitleFromFile(file.name);
-        res = ccsScanSong(ex.pages.slice(0, n).map(p => p.scan), song, {});
+        const scans = ex.pages.slice(0, n).map(p => p.scan);
+        if (scans.some(s => s.systems.length)) { try { res = await ccsOcrBuild(scans, canv, file.name, fresh, (l, p) => onProgress && onProgress(l, p)); } catch (e) { console.warn('pdf ocr', e); res = null; } }
+        if (!res) res = ccsScanSong(scans, song, {});
       }
       if (!res) throw new Error('nothing-found');
       res.refPages = refs; res.fileName = file.name; res.pageCount = ex.numPages;
@@ -2493,7 +2495,7 @@
       );
     }
 
-    // ================= v9.3 image import (JPG / PNG / WebP) =================
+    // ================= v9.4 image import (JPG / PNG / WebP) =================
     async function ccsFileToCanvas(file, maxW) {
       let bmp = null;
       try { bmp = await createImageBitmap(file); } catch (e) {
@@ -2517,6 +2519,7 @@
     }
     // text recognition for printed charts: returns [{s, x0, y0, x1, y1}] in canvas pixels
     async function ccsOcrWords(cv, onProgress) {
+      if (window.__ccsOcrHook) return await window.__ccsOcrHook(cv);
       const T = await ccsLoadTesseract();
       const worker = await T.createWorker('eng', 1, { logger: m => { if (onProgress && m.status === 'recognizing text') onProgress(m.progress); } });
       try {
@@ -2536,6 +2539,41 @@
       words.forEach(w => pg.texts.push({ s: w.s, x: w.x0 * f, y: w.y1 * f, w: (w.x1 - w.x0) * f, h: (w.y1 - w.y0) * f * 1.3, font: 'ocr' }));
       return pg;
     }
+    // text recognition often mistakes letters in chord symbols; repair the safe cases and drop short junk that only looks like a chord
+    function ccsCleanOcrWords(words, H) {
+      const OK = /^[A-G][#b]?(maj|min|mM|m|M|dim|aug|sus|add|alt|[+\-\u00b0\u00f8\u0394])?(\d{1,2})?([#b+\-]\d{1,2}|sus\d?|add\d{1,2}|maj\d{1,2}|\(.{1,8}\))*(\/[A-G][#b]?)?$/;
+      const KEEP = /^(ch\d?|coda|fine|end|dc|ds|gtr|bass|drums?|band|bridge|break)$/i;
+      return words.map(w => {
+        let s = w.s.replace(/^[|\[\](){}.,;:'"`~*_]+|[|\[\]{}.,;:'"`~*_]+$/g, '');
+        const m = /^([A-G][#b]?)(in|ln|rn|nn|ni)(\d{0,2})$/.exec(s); if (m) s = m[1] + 'm' + m[3];
+        s = s.replace(/^([A-G][#b]?)rn/, '$1m');
+        return s ? { ...w, s } : null;
+      }).filter(w => w && !(/^[A-G]/.test(w.s) && w.s.length <= 4 && (!H || w.y0 > H * 0.2) && !OK.test(w.s) && !KEEP.test(w.s)));
+    }
+    // shared by pictures and scanned PDFs: read the printed text with OCR, then build the chart with the vector builder
+    async function ccsOcrBuild(scans, canv, fileName, fresh, onProgress, ocrFn) {
+      let res = null; let ocrNote = null;
+      if (scans.some(s => s.systems.length)) {
+        try {
+          const pages = [];
+          for (let i = 0; i < scans.length; i++) {
+            onProgress && onProgress('Reading text on page ' + (i + 1) + ' (the first time downloads a language file)', 0.4 + 0.5 * i / scans.length);
+            const words = await (ocrFn || ccsOcrWords)(canv[i].cv, p => onProgress && onProgress('Reading text on page ' + (i + 1), 0.4 + 0.5 * ((i + p) / scans.length)));
+            pages.push(ccsSyntheticPage(scans[i], ccsCleanOcrWords(words, canv[i].h), canv[i].w, canv[i].h));
+          }
+          const r = ccsPdfBuildSong(pages, { fresh, fileName });
+          if (r) { const VOC = /^(intro|verse|v\d|chorus|ch\d?|c\d|pre|bridge|br\d?|solo|outro|ending|tag|interlude|coda|hook|refrain|riff|vamp|break|head|turnaround|horns?|gtr|guitar|voc|vocal|sax|keys?|piano|bass|drums?|instrumental|inst|rap|channel|middle|turn)/i; let k = 0; r.song.sections.forEach(s => { k++; if (!VOC.test(String(s.name || '').trim())) s.name = 'Section ' + k; }); if (r.report.sections) r.report.sections.forEach((s, i) => { s.name = r.song.sections[i] ? r.song.sections[i].name : s.name; }); }
+          if (r && r.report.chordCount > 0) { r.report.mode = 'ocr'; r.report.warnings.unshift('Chords from a scan or picture are read by text recognition and can contain mistakes (handwriting is the least reliable). Check every chord against the original page shown beside the chart.'); res = r; }
+          else ocrNote = 'No printed chords could be recognised, so only bars and sections were built.';
+        } catch (e) { console.warn('ocr', e); ocrNote = 'Text recognition could not run (it needs an internet connection the first time), so only bars and sections were built.'; }
+        if (!res) {
+          const song = fresh(); song.sections = []; song.title = ccsTitleFromFile(fileName);
+          res = ccsScanSong(scans, song, {});
+          if (res && ocrNote) res.report.warnings.unshift(ocrNote);
+        }
+      }
+      return res;
+    }
     async function ccsImportImageFiles(files, fresh, onProgress, ocrFn) {
       const refs = [], scans = [], canv = [];
       for (let i = 0; i < Math.min(files.length, 12); i++) {
@@ -2545,31 +2583,13 @@
         scans.push(ccsScanAnalyse({ data: id.data, width: id.width, height: id.height })); canv.push({ w: cv.width, h: cv.height, cv });
         refs.push(cv.toDataURL('image/jpeg', 0.75));
       }
-      const fileName = files[0].name; let res = null; let ocrNote = null;
-      if (scans.some(s => s.systems.length)) {
-        try {
-          const pages = [];
-          for (let i = 0; i < scans.length; i++) {
-            onProgress && onProgress('Reading text on page ' + (i + 1) + ' (the first time downloads a language file)', 0.4 + 0.5 * i / scans.length);
-            const words = await (ocrFn || ccsOcrWords)(canv[i].cv, p => onProgress && onProgress('Reading text on page ' + (i + 1), 0.4 + 0.5 * ((i + p) / scans.length)));
-            pages.push(ccsSyntheticPage(scans[i], words, canv[i].w, canv[i].h));
-          }
-          const r = ccsPdfBuildSong(pages, { fresh, fileName });
-          if (r && r.report.chordCount > 0) { r.report.mode = 'ocr'; r.report.warnings.unshift('Chords in a picture are read by text recognition. Check every chord against the picture shown beside the chart.'); res = r; }
-          else ocrNote = 'No printed chords could be recognised, so only bars and sections were built.';
-        } catch (e) { console.warn('ocr', e); ocrNote = 'Text recognition could not run (it needs an internet connection the first time), so only bars and sections were built.'; }
-        if (!res) {
-          const song = fresh(); song.sections = []; song.title = ccsTitleFromFile(fileName);
-          res = ccsScanSong(scans, song, {});
-          if (res && ocrNote) res.report.warnings.unshift(ocrNote);
-        }
-      }
+      const fileName = files[0].name; const res = await ccsOcrBuild(scans, canv, fileName, fresh, onProgress, ocrFn);
       if (!res) throw new Error('nothing-found');
       res.refPages = refs; res.fileName = fileName; res.pageCount = files.length; return res;
     }
 
     function ChordChartEditor() {
-      const APP_VERSION = "9.3";
+      const APP_VERSION = "9.4";
 
       // 1. App State
       const [songState, setSongState] = useState(() => ({ past: [], present: ccsLoadDraft() || getFreshSong(), future: [] }));
@@ -5820,7 +5840,7 @@
             </div>
           )}
 
-          {/* About Modal (Updated to Version 9.3) */}
+          {/* About Modal (Updated to Version 9.4) */}
           {showAbout && (
             <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4">
                 <div className="bg-white p-6 rounded shadow-2xl w-full max-w-sm flex flex-col border-4 border-black text-center relative">
@@ -6122,7 +6142,7 @@
 
                 {/* Modal Footer */}
                 <div className="px-4 py-2.5 border-t border-gray-200 bg-gray-50 flex items-center justify-between text-xs text-gray-500">
-                  <span>Chord Chart Studio Direct • v9.3</span>
+                  <span>Chord Chart Studio Direct • v9.4</span>
                   <button onClick={() => setShowAllToolsModal(false)} className="px-3 py-1 bg-black text-white font-bold rounded hover:bg-gray-800 transition-colors">
                     Done
                   </button>
