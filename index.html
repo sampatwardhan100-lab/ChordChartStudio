@@ -389,7 +389,7 @@
     // ============================================================================
     // CCS v8 core: data safety + three-way merge (spreadsheet-style live editing)
     // ============================================================================
-    const CCS_APP_VERSION = "10.4";
+    const CCS_APP_VERSION = "10.5";
     const ccsRid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
     const ccsEq = (a, b) => a === b || JSON.stringify(a) === JSON.stringify(b);
     const ccsClamp = (n, lo, hi, d) => (Number.isFinite(Number(n)) ? Math.min(hi, Math.max(lo, Number(n))) : d);
@@ -1079,7 +1079,7 @@
               {u.email && u.emailVerified === false && <div className="text-xs bg-amber-50 border border-amber-300 rounded-md p-2.5 mb-2">Email not verified. Verify it to accept invitations. <button className="text-blue-700 underline font-bold" onClick={() => auth.resendVerification().then(() => alert('Verification email sent.')).catch(e => alert(friendlyError(e)))}>Resend</button></div>}
               <button onClick={() => { const n = prompt('Your display name', userLabel(u)); if (n && n.trim()) auth.rename(n).catch(e => alert(friendlyError(e))); setOpen(false); }} className={item}><i className="fas fa-pen w-4 text-gray-500"></i>Change display name</button>
               <button onClick={async () => { try { const f = fbx(); const snap = await f.getDocs(f.query(f.collection(f.db, SONGS), f.where('memberUids', 'array-contains', u.uid))); const songs = []; snap.forEach(d => songs.push({ id: d.id, ...d.data() })); const blob = new Blob([JSON.stringify({ app: 'Chord Chart Studio', version: '9.11', exportedAt: new Date().toISOString(), songs }, null, 2)], { type: 'application/json' }); await ccsSaveFile('CCS_all_songs_' + new Date().toISOString().slice(0, 10) + '.json', blob); } catch (e) { alert('Could not back up: ' + friendlyError(e)); } setOpen(false); }} className={item}><i className="fas fa-box-archive w-4 text-gray-500"></i>Back up all my songs</button>
-              <button onClick={async () => { const r = ['Chord Chart Studio 10.4', navigator.userAgent, new Date().toString(), 'Online: ' + navigator.onLine, 'Recent errors:'].concat((window.__ccsErrs || []).slice(-8)).join('\n'); try { await navigator.clipboard.writeText(r); alert('Problem details copied. Paste them into a message to the developer.'); } catch (e) { prompt('Copy these details:', r); } setOpen(false); }} className={item}><i className="fas fa-bug w-4 text-gray-500"></i>Copy problem report</button>
+              <button onClick={async () => { const r = ['Chord Chart Studio 10.5', navigator.userAgent, new Date().toString(), 'Online: ' + navigator.onLine, 'Recent errors:'].concat((window.__ccsErrs || []).slice(-8)).join('\n'); try { await navigator.clipboard.writeText(r); alert('Problem details copied. Paste them into a message to the developer.'); } catch (e) { prompt('Copy these details:', r); } setOpen(false); }} className={item}><i className="fas fa-bug w-4 text-gray-500"></i>Copy problem report</button>
               <a href={ccsShareBase() + 'privacy.html'} target="_blank" rel="noopener noreferrer" className={item + ' text-gray-700'}><i className="fas fa-shield-halved w-4 text-gray-500"></i>Privacy policy</a>
               <a href={ccsShareBase() + 'terms.html'} target="_blank" rel="noopener noreferrer" className={item + ' text-gray-700'}><i className="fas fa-file-lines w-4 text-gray-500"></i>Terms of use</a>
               <button onClick={() => { setOpen(false); setDelOpen(true); }} className={item + ' text-gray-700 hover:bg-red-50'}><i className="fas fa-user-slash w-4 text-gray-500"></i>Delete account…</button>
@@ -3193,6 +3193,10 @@
       const [msg, setMsg] = useState(''); const [missing, setMissing] = useState(false); const [linkIn, setLinkIn] = useState(''); const [adding, setAdding] = useState(false);
       const [drag, setDrag] = useState(null); const [editing, setEditing] = useState(false); const [adv, setAdv] = useState(false); const [busy, setBusy] = useState(''); const [ci, setCi] = useState(null);
       const [cfg, setCfgS] = useState(ccsCountCfg); const [followChart, setFollowChart] = useState(false);
+      const [ytCol, setYtColS] = useState(() => { try { const v = localStorage.getItem('ccs_ytcol'); if (v === '0' || v === '1') return v === '1'; } catch (e) {} return window.innerWidth < 640; });
+      const [ytSide, setYtSideS] = useState(() => { try { return localStorage.getItem('ccs_ytside') === 'l' ? 'l' : 'r'; } catch (e) { return 'r'; } });
+      const setYtCol = v => { setYtColS(v); try { localStorage.setItem('ccs_ytcol', v ? '1' : '0'); } catch (e) {} };
+      const setYtSide = v => { setYtSideS(v); try { localStorage.setItem('ccs_ytside', v); } catch (e) {} };
       const aEl = useRef(null); const ytBox = useRef(null); const ytP = useRef(null); const eng = useRef(null); const urlRef = useRef(null); const fileIn = useRef(null); const reIn = useRef(null);
       const resume = useRef(null); const ciT = useRef([]); const acRef = useRef(null); const taps = useRef([]); const loopRef = useRef(false); loopRef.current = loop;
       const track = tracks.find(t => t.id === selId) || tracks[0] || null; const tid = track ? track.id : null;
@@ -3322,7 +3326,17 @@
       const hidden = (!open && (!tracks.length || !on));
       const wrap = (inner) => (<>
         <audio ref={aEl} preload="metadata" playsInline className="hidden"></audio>
-        {ytTrack && !hidden && <div ref={ytBox} className="fixed right-2 top-14 z-[129] w-[200px] h-[113px] bg-black rounded overflow-hidden shadow-xl border border-white/20"></div>}
+        {ytTrack && !hidden && (() => { const L = ytSide === 'l'; const SL = 34;
+          const tf = ytCol ? `translateX(${L ? 'calc(-100% + ' + SL + 'px)' : 'calc(100% - ' + SL + 'px)'})` : `translateX(${L ? '8px' : '-8px'})`;
+          return <div data-testid="yt-float" data-collapsed={ytCol ? '1' : '0'} data-side={ytSide} className="fixed z-[129]" style={{ top: window.innerWidth >= 1024 ? 56 : 112, [L ? 'left' : 'right']: 0, transform: tf, transition: 'transform .22s ease', width: 200 }}>
+            <div ref={ytBox} className="w-[200px] h-[113px] bg-black overflow-hidden shadow-xl border border-white/20 rounded"></div>
+            {ytCol
+              ? <button data-testid="yt-expand" aria-label="Show video" onClick={() => setYtCol(false)} className="absolute flex items-center justify-center bg-black/55 text-white rounded" style={{ top: 0, bottom: 0, width: SL, [L ? 'right' : 'left']: 0 }}><i className={`fas fa-chevron-${L ? 'right' : 'left'}`}></i></button>
+              : <div className="absolute flex gap-1" style={{ top: 4, [L ? 'right' : 'left']: 4 }}>
+                  <button data-testid="yt-collapse" aria-label="Hide video to the side" onClick={() => setYtCol(true)} className="w-7 h-7 rounded-full bg-black/60 text-white text-[11px] flex items-center justify-center"><i className={`fas fa-chevron-${L ? 'left' : 'right'}`}></i></button>
+                  <button data-testid="yt-side" aria-label="Move video to the other side" onClick={() => setYtSide(L ? 'r' : 'l')} className="w-7 h-7 rounded-full bg-black/60 text-white text-[11px] flex items-center justify-center"><i className="fas fa-left-right"></i></button>
+                </div>}
+          </div>; })()}
         {ci && <div data-testid="countin" aria-live="assertive" className="fixed inset-0 z-[140] flex items-center justify-center pointer-events-none"><div className="w-40 h-40 rounded-full bg-black/80 text-amber-300 text-7xl font-black flex items-center justify-center border-4 border-amber-300 shadow-2xl">{ci.n}</div></div>}
         {inner}
         {editing && track && <WaveEditor track={track} tBpm={tBpm} start={start} endT={endT} beats={ccsBeatsOf(song.timeSignature)} effRate={effRate} playing={playing} getCur={() => (eng.current ? (eng.current.cur() || 0) : 0)} seek={t => { if (eng.current) { eng.current.seek(t); setCur(t); } }} onPlay={playPause} onStop={stop} patchTrack={patchTrack} readOnly={readOnly} onClose={() => setEditing(false)} />}
