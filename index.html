@@ -3676,7 +3676,7 @@
     }
 
     function ChordChartEditor() {
-      const APP_VERSION = "9.11";
+      const APP_VERSION = CCS_APP_VERSION;
 
       // 1. App State
       const [songState, setSongState] = useState(() => ({ past: [], present: ccsLoadDraft() || getFreshSong(), future: [] }));
@@ -6963,7 +6963,7 @@
             </div>
           )}
 
-          {/* About Modal (Updated to Version 9.11) */}
+          {/* About Modal */}
           {showAbout && (
             <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4">
                 <div className="bg-white p-6 rounded shadow-2xl w-full max-w-sm flex flex-col border-4 border-black text-center relative">
