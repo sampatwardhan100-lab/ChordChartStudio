@@ -110,15 +110,15 @@
         html.ccs-v2 [data-ui="rail"] button:hover:not(:disabled) { background: var(--ui-ink) !important; color: #fff; }
       }
       html.ccs-v2 [data-ui="fab-left"] > button, html.ccs-v2 [data-ui="fab-right"] { min-height: 48px; border-radius: 9999px; box-shadow: 0 6px 18px rgba(0,0,0,.22); }
-      html.ccs-v2 [data-ui="fab-left"] { bottom: 24px !important; }
-      html.ccs-v2 [data-ui="fab-right"] { bottom: 24px !important; right: 24px !important; }
+      html.ccs-v2 [data-ui="fab-left"] { bottom: calc(24px + var(--ccs-dock, 0px)) !important; }
+      html.ccs-v2 [data-ui="fab-right"] { bottom: calc(24px + var(--ccs-dock, 0px)) !important; right: 24px !important; }
       @media (max-width: 1023px) {
         html.ccs-v2 [data-ui="ribbon"] .grid > *, html.ccs-v2 [data-ui="libbar"] button { border-radius: 10px !important; height: 40px !important; min-height: 40px !important; box-sizing: border-box; }
         html.ccs-v2 [data-ui="ribbon"] .grid > * { padding-top: 0 !important; padding-bottom: 0 !important; }
         html.ccs-v2 [data-ui="ribbon"], html.ccs-v2 [data-ui="libbar"] { padding-top: 6px !important; padding-bottom: 6px !important; }
         html.ccs-v2 [data-ui="ribbon"] .grid > * > button, html.ccs-v2 [data-ui="ribbon"] .grid > * > select { height: 32px !important; }
-        html.ccs-v2 [data-ui="fab-left"] { left: 16px !important; bottom: 20px !important; }
-        html.ccs-v2 [data-ui="fab-right"] { right: 16px !important; bottom: 20px !important; }
+        html.ccs-v2 [data-ui="fab-left"] { left: 16px !important; bottom: calc(20px + var(--ccs-dock, 0px)) !important; }
+        html.ccs-v2 [data-ui="fab-right"] { right: 16px !important; bottom: calc(20px + var(--ccs-dock, 0px)) !important; }
       }
       html.ccs-v2 .ccs-m-only { display: none; }
       @media (max-width: 1023px) {
@@ -389,7 +389,7 @@
     // ============================================================================
     // CCS v8 core: data safety + three-way merge (spreadsheet-style live editing)
     // ============================================================================
-    const CCS_APP_VERSION = "10.3";
+    const CCS_APP_VERSION = "10.4";
     const ccsRid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
     const ccsEq = (a, b) => a === b || JSON.stringify(a) === JSON.stringify(b);
     const ccsClamp = (n, lo, hi, d) => (Number.isFinite(Number(n)) ? Math.min(hi, Math.max(lo, Number(n))) : d);
@@ -1079,7 +1079,7 @@
               {u.email && u.emailVerified === false && <div className="text-xs bg-amber-50 border border-amber-300 rounded-md p-2.5 mb-2">Email not verified. Verify it to accept invitations. <button className="text-blue-700 underline font-bold" onClick={() => auth.resendVerification().then(() => alert('Verification email sent.')).catch(e => alert(friendlyError(e)))}>Resend</button></div>}
               <button onClick={() => { const n = prompt('Your display name', userLabel(u)); if (n && n.trim()) auth.rename(n).catch(e => alert(friendlyError(e))); setOpen(false); }} className={item}><i className="fas fa-pen w-4 text-gray-500"></i>Change display name</button>
               <button onClick={async () => { try { const f = fbx(); const snap = await f.getDocs(f.query(f.collection(f.db, SONGS), f.where('memberUids', 'array-contains', u.uid))); const songs = []; snap.forEach(d => songs.push({ id: d.id, ...d.data() })); const blob = new Blob([JSON.stringify({ app: 'Chord Chart Studio', version: '9.11', exportedAt: new Date().toISOString(), songs }, null, 2)], { type: 'application/json' }); await ccsSaveFile('CCS_all_songs_' + new Date().toISOString().slice(0, 10) + '.json', blob); } catch (e) { alert('Could not back up: ' + friendlyError(e)); } setOpen(false); }} className={item}><i className="fas fa-box-archive w-4 text-gray-500"></i>Back up all my songs</button>
-              <button onClick={async () => { const r = ['Chord Chart Studio 10.3', navigator.userAgent, new Date().toString(), 'Online: ' + navigator.onLine, 'Recent errors:'].concat((window.__ccsErrs || []).slice(-8)).join('\n'); try { await navigator.clipboard.writeText(r); alert('Problem details copied. Paste them into a message to the developer.'); } catch (e) { prompt('Copy these details:', r); } setOpen(false); }} className={item}><i className="fas fa-bug w-4 text-gray-500"></i>Copy problem report</button>
+              <button onClick={async () => { const r = ['Chord Chart Studio 10.4', navigator.userAgent, new Date().toString(), 'Online: ' + navigator.onLine, 'Recent errors:'].concat((window.__ccsErrs || []).slice(-8)).join('\n'); try { await navigator.clipboard.writeText(r); alert('Problem details copied. Paste them into a message to the developer.'); } catch (e) { prompt('Copy these details:', r); } setOpen(false); }} className={item}><i className="fas fa-bug w-4 text-gray-500"></i>Copy problem report</button>
               <a href={ccsShareBase() + 'privacy.html'} target="_blank" rel="noopener noreferrer" className={item + ' text-gray-700'}><i className="fas fa-shield-halved w-4 text-gray-500"></i>Privacy policy</a>
               <a href={ccsShareBase() + 'terms.html'} target="_blank" rel="noopener noreferrer" className={item + ' text-gray-700'}><i className="fas fa-file-lines w-4 text-gray-500"></i>Terms of use</a>
               <button onClick={() => { setOpen(false); setDelOpen(true); }} className={item + ' text-gray-700 hover:bg-red-50'}><i className="fas fa-user-slash w-4 text-gray-500"></i>Delete account…</button>
@@ -3273,7 +3273,7 @@
         const h = e => { const el = e.target && e.target.closest ? e.target.closest('[data-bid]') : null; if (!el) return; e.preventDefault(); e.stopPropagation(); const idx = Array.prototype.indexOf.call(document.querySelectorAll('[data-bid]'), el); if (idx < 0) return; if (pick === 'a') { setLb({ a: idx, b: null }); setPick('b'); } else { setLb(l => ({ a: Math.min(l.a, idx), b: Math.max(l.a, idx) })); setPick(null); setLbOn(true); } };
         document.body.classList.add('ccs-picking'); document.addEventListener('click', h, true); return () => { document.body.classList.remove('ccs-picking'); document.removeEventListener('click', h, true); };
       }, [pick]);
-      useEffect(() => { const el = dockRef.current; const set = v => { try { document.documentElement.style.setProperty('--ccs-dock', v + 'px'); } catch (e) {} }; if (!open || !el) { set(0); return; } set(el.offsetHeight); let ro = null; try { ro = new ResizeObserver(() => set(el.offsetHeight)); ro.observe(el); } catch (e) {} return () => { if (ro) ro.disconnect(); set(0); }; }, [open, adv, on, tid, pick, lb.a, tr.on]);
+      useEffect(() => { const el = dockRef.current; const set = v => { try { document.documentElement.style.setProperty('--ccs-dock', v + 'px'); } catch (e) {} }; if (!el) { set(0); return; } set(el.offsetHeight); let ro = null; try { ro = new ResizeObserver(() => set(el.offsetHeight)); ro.observe(el); } catch (e) {} return () => { if (ro) ro.disconnect(); set(0); }; }, [open, adv, on, tid, pick, lb.a, tr.on]);
       // highlight the bar being played in the chart
       useEffect(() => {
         const clear = () => document.querySelectorAll('.ccs-playhead').forEach(n => n.classList.remove('ccs-playhead'));
@@ -3333,9 +3333,23 @@
       const num = "w-16 bg-gray-800 border border-white/20 rounded px-1.5 py-1 text-xs text-center";
       const ready = !!eng.current && !missing && !busy; const shown = drag != null ? drag : cur;
       if (!open) return wrap(
-        <button data-testid="audio-pill" onClick={() => setOpen(true)} className="fixed left-3 bottom-3 z-[130] flex items-center gap-2 px-3 py-2 rounded-full bg-gray-900/90 text-white text-[11px] font-black uppercase shadow-xl border border-white/20" style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
-          <i className={`fas ${playing ? 'fa-pause' : 'fa-music'}`}></i><span>{playing ? ccsFmtTime(cur) : 'Audio'}</span>
-        </button>);
+        <div ref={dockRef} data-testid="audio-mini" role="region" aria-label="Practice audio player" className="fixed left-0 right-0 bottom-0 z-[130] bg-gray-900/95 text-white border-t-2 border-white/20 shadow-2xl backdrop-blur" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <div className="max-w-3xl mx-auto px-2 py-1 flex items-center gap-1">
+            {(() => { const mb = "w-9 h-9 shrink-0 rounded-full bg-white/10 hover:bg-white/25 text-white flex items-center justify-center text-[12px] disabled:opacity-30";
+              return (<>
+                <button data-testid="audio-mini-start" aria-label="Jump to start" onClick={stop} disabled={!ready} className={mb}><i className="fas fa-backward-step"></i></button>
+                <button data-testid="audio-mini-rew" aria-label="Back 10 seconds" onClick={() => jump(-10)} disabled={!ready} className={mb + ''}><span className="text-[10px] font-black">−10</span></button>
+                <button data-testid="audio-mini-play" aria-label={playing || ci ? 'Pause' : 'Play'} onClick={playPause} disabled={!ready} className={mb + ' !bg-amber-400 !text-black hover:!bg-amber-300'}><i className={`fas ${playing || ci ? 'fa-pause' : 'fa-play'}`}></i></button>
+                <button data-testid="audio-mini-fwd" aria-label="Forward 10 seconds" onClick={() => jump(10)} disabled={!ready} className={mb + ''}><span className="text-[10px] font-black">+10</span></button>
+                <span data-testid="audio-mini-time" className="text-[10px] tabular-nums w-9 text-right shrink-0">{ccsFmtTime(shown)}</span>
+                <input data-testid="audio-mini-seek" type="range" aria-label="Seek" min="0" max={dur || 0} step="0.1" value={Math.min(shown, dur || 0)} disabled={!ready || !dur}
+                  onChange={e => setDrag(+e.target.value)} onPointerUp={() => { if (drag != null && eng.current) { eng.current.seek(drag); setCur(drag); } setDrag(null); }} onKeyUp={() => { if (drag != null && eng.current) { eng.current.seek(drag); setCur(drag); } setDrag(null); }} onBlur={() => setDrag(null)}
+                  className="flex-1 min-w-0 accent-amber-400 h-6" />
+                <span className="text-[10px] tabular-nums w-9 shrink-0 text-gray-300">{ccsFmtTime(dur)}</span>
+                <button data-testid="audio-pill" aria-label="Open practice audio" onClick={() => setOpen(true)} className={mb}><i className="fas fa-chevron-up"></i></button>
+              </>); })()}
+          </div>
+        </div>);
       const fmtT = t => { const m = Math.floor(t / 60), s = (t % 60).toFixed(1); return m + ':' + (s < 10 ? '0' : '') + s; };
       return wrap(
         <div ref={dockRef} data-testid="audio-panel" role="region" aria-label="Practice audio" className="fixed left-0 right-0 bottom-0 z-[130] bg-gray-900/95 text-white border-t-2 border-white/20 shadow-2xl backdrop-blur max-h-[78vh] overflow-y-auto" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
