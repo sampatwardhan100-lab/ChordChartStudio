@@ -120,6 +120,34 @@
         html.ccs-v2 [data-ui="fab-left"] { left: 16px !important; bottom: 20px !important; }
         html.ccs-v2 [data-ui="fab-right"] { right: 16px !important; bottom: 20px !important; }
       }
+      html.ccs-v2 .ccs-m-only { display: none; }
+      @media (max-width: 1023px) {
+        html.ccs-v2 .ccs-m-only { display: inline-flex; }
+        html.ccs-v2 [data-ui="header"] h1 { display: none; }
+        html.ccs-v2 [data-ui="header"] img[alt="Chord Chart Studio Logo"] { height: 36px !important; width: 36px !important; }
+        html.ccs-v2 [data-ui="header"] button[title="Save"] { font-size: 11px !important; padding: 4px 8px !important; }
+        html.ccs-v2 [data-ui="header"] button[title="Save"] svg { width: 13px; height: 13px; }
+        html.ccs-v2 [data-ui="header"] button[title="Save Options"] { padding: 4px 6px !important; }
+        html.ccs-v2 [data-ui="libbar"] > span[role="status"], html.ccs-v2 [data-ui="libbar"] > button[title="Comments and private notes"], html.ccs-v2 [data-ui="libbar"] > button[title="Share this song"] { display: none !important; }
+        html.ccs-v2 [data-ui="libbar"]:not(:has(.ccs-m-keep)) { display: none !important; }
+        html.ccs-v2 [data-ui="ribbon"] .grid { grid-template-columns: minmax(0,1.5fr) minmax(0,1fr) minmax(0,1.05fr) minmax(0,.55fr) minmax(0,.8fr); gap: 5px; }
+        html.ccs-v2 [data-ui="ribbon"] .grid > * { padding-left: 6px !important; padding-right: 6px !important; font-size: 12px; min-width: 0; }
+        html.ccs-v2 [data-ui="ribbon"] .grid > * { gap: 0 !important; }
+        html.ccs-v2 [data-ui="ribbon"] .grid > div:not(.ccs-m-only) { padding-left: 2px !important; padding-right: 2px !important; justify-content: space-evenly !important; overflow: hidden; }
+        html.ccs-v2 [data-ui="ribbon"] .grid > div button { padding-left: 3px !important; padding-right: 3px !important; font-size: 11px !important; gap: 3px !important; min-width: 0; }
+        html.ccs-v2 [data-ui="ribbon"] .grid > div button i { font-size: 10px; }
+        html.ccs-v2 [data-ui="ribbon"] .grid > div select { font-size: 11px !important; padding-left: 0 !important; padding-right: 0 !important; min-width: 0; max-width: 100%; }
+        html.ccs-v2 [data-ui="ribbon"] .grid > div > span { margin-right: 2px !important; font-size: 9px !important; }
+        html.ccs-v2 [data-ui="ribbon"] .grid > .ccs-m-only { height: 40px !important; border-radius: 10px !important; font-size: 11px; padding-left: 4px !important; padding-right: 4px !important; }
+      }
+
+      @media (max-width: 380px) {
+        html.ccs-v2 [data-ui="header"] > div:first-child { gap: 3px !important; }
+        html.ccs-v2 [data-ui="header"] > div:first-child > * { gap: 3px !important; }
+        html.ccs-v2 [data-ui="header"] > div:first-child button { padding-left: 6px !important; padding-right: 6px !important; min-width: 0 !important; }
+        html.ccs-v2 [data-ui="header"] img { width: 32px !important; height: 32px !important; }
+        html.ccs-v2 [data-ui="header"] > div:first-child > div:first-child { padding-right: 0 !important; margin-right: 0 !important; }
+      }
       .ccs-chart-scroll { padding-bottom: var(--ccs-dock, 0px); }
       .ccs-picking [data-bid], .ccs-picking [data-bid] * { cursor: crosshair !important; }
       .ccs-picking [data-bid] * { pointer-events: none !important; }
@@ -361,7 +389,7 @@
     // ============================================================================
     // CCS v8 core: data safety + three-way merge (spreadsheet-style live editing)
     // ============================================================================
-    const CCS_APP_VERSION = "10.2";
+    const CCS_APP_VERSION = "10.3";
     const ccsRid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
     const ccsEq = (a, b) => a === b || JSON.stringify(a) === JSON.stringify(b);
     const ccsClamp = (n, lo, hi, d) => (Number.isFinite(Number(n)) ? Math.min(hi, Math.max(lo, Number(n))) : d);
@@ -980,6 +1008,16 @@
       );
     }
 
+    function CcsMiniChip({ cloud, hasCloud, signedIn }) {
+      const st = cloud.status;
+      const c = !hasCloud ? (signedIn ? ['bg-gray-100 text-gray-700 border-gray-300', 'cloud-arrow-up', 'Draft'] : ['bg-gray-100 text-gray-700 border-gray-300', 'laptop', 'Local'])
+        : st === 'saved' ? ['bg-green-50 text-green-800 border-green-300', 'cloud-check', 'Saved']
+        : st === 'saving' ? ['bg-blue-50 text-blue-800 border-blue-300', 'rotate', 'Saving']
+        : st === 'offline' ? ['bg-amber-50 text-amber-900 border-amber-300', 'plane', 'Offline']
+        : st === 'error' ? ['bg-red-50 text-red-800 border-red-300', 'triangle-exclamation', 'Retrying']
+        : ['bg-gray-50 text-gray-500 border-gray-200', 'circle-notch', 'Opening'];
+      return <span data-ui="m-chip" role="status" aria-live="polite" className={`ccs-m-only items-center gap-1 px-1.5 py-0.5 rounded-full border font-bold text-[10px] leading-4 ${c[0]}`}><i className={`fas fa-${c[1]} text-[9px] ${st === 'saving' && hasCloud ? 'fa-spin' : ''}`}></i>{c[2]}</span>;
+    }
     function CloudBar({ onSetlists, onExport, auth, cloud, hasCloud, presence, onLibrary, onShare, onNotes, notesOpen, notesCount, onHistory, onSave, onSignIn, readOnly, onCopyMine, signedIn, toastNotice }) {
       const [menu, setMenu] = useState(false);
       const [delOpen, setDelOpen] = useState(false);
@@ -998,11 +1036,11 @@
             <i className={`fas fa-${chip[1]} ${st === 'saving' && hasCloud ? 'fa-spin' : ''}`}></i><span className="hidden sm:inline">{chip[2]}</span><span className="sm:hidden">{chip[3]}</span>
           </span>
           {hasCloud && cloud.role && <span className="hidden sm:inline px-1.5 py-0.5 rounded bg-white border border-gray-200 font-bold text-gray-600">{ROLE_LABEL[cloud.role]}</span>}
-          {presence.length > 0 && <span className="inline-flex items-center -space-x-1.5 ml-1" title={presence.map(p => p.name).join(', ') + ' here now'}>
+          {presence.length > 0 && <span className="inline-flex items-center -space-x-1.5 ml-1 ccs-m-keep" title={presence.map(p => p.name).join(', ') + ' here now'}>
             {presence.slice(0, 5).map(p => <Avatar key={p.uid} name={p.name} color={p.color} size={22} />)}
             {presence.length > 5 && <span className="pl-2 font-bold text-gray-500">+{presence.length - 5}</span>}
           </span>}
-          {toastNotice && <span className="text-blue-700 font-semibold truncate">{toastNotice}</span>}
+          {toastNotice && <span className="text-blue-700 font-semibold truncate ccs-m-keep">{toastNotice}</span>}
           <span className="hidden lg:block flex-1"></span>
           {signedIn && !hasCloud && <button onClick={onSave} className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase rounded hidden lg:flex items-center gap-1"><i className="fas fa-cloud-arrow-up"></i><span className="hidden sm:inline">Save to my library</span><span className="sm:hidden">Save</span></button>}
           <button onClick={onLibrary} className="px-2 py-1 bg-white hover:bg-black hover:text-white border border-gray-300 font-bold rounded hidden lg:flex items-center gap-1" title="My songs"><i className="fas fa-folder-open"></i><span className="hidden sm:inline">My songs</span></button>
@@ -1012,7 +1050,7 @@
           {hasCloud && <button onClick={onHistory} className="px-2 py-1 bg-white hover:bg-gray-100 border border-gray-300 font-bold rounded hidden lg:flex items-center gap-1" title="Version history"><i className="fas fa-clock-rotate-left"></i><span className="hidden lg:inline">History</span></button>}
           <button onClick={onShare} className="px-2.5 py-1.5 lg:py-1 bg-black hover:bg-gray-800 text-white font-black uppercase rounded flex flex-1 lg:flex-none justify-center items-center gap-1" title="Share this song"><i className="fas fa-user-plus"></i><span>Share</span></button>
           <AccountMenu auth={auth} signedIn={signedIn} onSignIn={onSignIn} wrapClass="hidden lg:block" />
-          {readOnly && hasCloud && <div className="basis-full bg-amber-50 border border-amber-300 text-amber-900 rounded px-2 py-1 font-semibold flex items-center gap-2"><i className="fas fa-eye"></i>You can view and comment on this song, but not edit it.<button onClick={onCopyMine} className="ml-auto underline font-black">Make my own copy</button></div>}
+          {readOnly && hasCloud && <div className="ccs-m-keep basis-full bg-amber-50 border border-amber-300 text-amber-900 rounded px-2 py-1 font-semibold flex items-center gap-2"><i className="fas fa-eye"></i>You can view and comment on this song, but not edit it.<button onClick={onCopyMine} className="ml-auto underline font-black">Make my own copy</button></div>}
         </div>
       );
     }
@@ -1041,7 +1079,7 @@
               {u.email && u.emailVerified === false && <div className="text-xs bg-amber-50 border border-amber-300 rounded-md p-2.5 mb-2">Email not verified. Verify it to accept invitations. <button className="text-blue-700 underline font-bold" onClick={() => auth.resendVerification().then(() => alert('Verification email sent.')).catch(e => alert(friendlyError(e)))}>Resend</button></div>}
               <button onClick={() => { const n = prompt('Your display name', userLabel(u)); if (n && n.trim()) auth.rename(n).catch(e => alert(friendlyError(e))); setOpen(false); }} className={item}><i className="fas fa-pen w-4 text-gray-500"></i>Change display name</button>
               <button onClick={async () => { try { const f = fbx(); const snap = await f.getDocs(f.query(f.collection(f.db, SONGS), f.where('memberUids', 'array-contains', u.uid))); const songs = []; snap.forEach(d => songs.push({ id: d.id, ...d.data() })); const blob = new Blob([JSON.stringify({ app: 'Chord Chart Studio', version: '9.11', exportedAt: new Date().toISOString(), songs }, null, 2)], { type: 'application/json' }); await ccsSaveFile('CCS_all_songs_' + new Date().toISOString().slice(0, 10) + '.json', blob); } catch (e) { alert('Could not back up: ' + friendlyError(e)); } setOpen(false); }} className={item}><i className="fas fa-box-archive w-4 text-gray-500"></i>Back up all my songs</button>
-              <button onClick={async () => { const r = ['Chord Chart Studio 10.2', navigator.userAgent, new Date().toString(), 'Online: ' + navigator.onLine, 'Recent errors:'].concat((window.__ccsErrs || []).slice(-8)).join('\n'); try { await navigator.clipboard.writeText(r); alert('Problem details copied. Paste them into a message to the developer.'); } catch (e) { prompt('Copy these details:', r); } setOpen(false); }} className={item}><i className="fas fa-bug w-4 text-gray-500"></i>Copy problem report</button>
+              <button onClick={async () => { const r = ['Chord Chart Studio 10.3', navigator.userAgent, new Date().toString(), 'Online: ' + navigator.onLine, 'Recent errors:'].concat((window.__ccsErrs || []).slice(-8)).join('\n'); try { await navigator.clipboard.writeText(r); alert('Problem details copied. Paste them into a message to the developer.'); } catch (e) { prompt('Copy these details:', r); } setOpen(false); }} className={item}><i className="fas fa-bug w-4 text-gray-500"></i>Copy problem report</button>
               <a href={ccsShareBase() + 'privacy.html'} target="_blank" rel="noopener noreferrer" className={item + ' text-gray-700'}><i className="fas fa-shield-halved w-4 text-gray-500"></i>Privacy policy</a>
               <a href={ccsShareBase() + 'terms.html'} target="_blank" rel="noopener noreferrer" className={item + ' text-gray-700'}><i className="fas fa-file-lines w-4 text-gray-500"></i>Terms of use</a>
               <button onClick={() => { setOpen(false); setDelOpen(true); }} className={item + ' text-gray-700 hover:bg-red-50'}><i className="fas fa-user-slash w-4 text-gray-500"></i>Delete account…</button>
@@ -5653,6 +5691,7 @@
                       <span className="hidden xs:inline">Chord Chart Studio</span><span className="xs:hidden">CCS</span> <span className="text-blue-600 font-extrabold text-[10px] hidden sm:inline">Direct</span>
                     </h1>
                   </div>
+                  <CcsMiniChip cloud={cloud} hasCloud={!!cloudId} signedIn={!!user} />
                 </div>
               </div>
 
@@ -5981,6 +6020,8 @@
                 {/* Scrollable Ribbon Body */}
                 <div ref={ribbonScrollRef} className="flex-1 flex items-center justify-between gap-2 overflow-x-auto no-scrollbar scroll-smooth">
                   <div className="grid grid-cols-3 gap-1.5 w-full lg:flex lg:w-auto lg:items-center shrink-0">
+                    <button data-ui="m-notes" onClick={() => setShowNotes(v => !v)} className={`ccs-m-only items-center justify-center gap-1 border font-bold ${showNotes ? 'bg-black text-white border-black' : 'bg-white text-gray-800 border-gray-300'}`} title="Comments and private notes" style={{ order: 10 }}><i className="fas fa-comment-dots"></i>{notesCount > 0 && <span className="bg-blue-600 text-white rounded-full px-1 text-[9px] leading-4">{notesCount}</span>}</button>
+                    <button data-ui="m-share" onClick={() => setShowLiveBandModal(true)} className="ccs-m-only items-center justify-center gap-1 bg-black text-white font-black uppercase" title="Share this song" style={{ order: 11 }}><i className="fas fa-user-plus"></i><span>Share</span></button>
                     {/* Mobile File Actions (Open & Demo right in ribbon so they are never missing!) */}
                     <div className="hidden items-center gap-1">
                       <button 
