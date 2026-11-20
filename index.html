@@ -389,7 +389,7 @@
     // ============================================================================
     // CCS v8 core: data safety + three-way merge (spreadsheet-style live editing)
     // ============================================================================
-    const CCS_APP_VERSION = "10.6";
+    const CCS_APP_VERSION = "11.0";
     const ccsRid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
     const ccsEq = (a, b) => a === b || JSON.stringify(a) === JSON.stringify(b);
     const ccsClamp = (n, lo, hi, d) => (Number.isFinite(Number(n)) ? Math.min(hi, Math.max(lo, Number(n))) : d);
@@ -1079,7 +1079,7 @@
               {u.email && u.emailVerified === false && <div className="text-xs bg-amber-50 border border-amber-300 rounded-md p-2.5 mb-2">Email not verified. Verify it to accept invitations. <button className="text-blue-700 underline font-bold" onClick={() => auth.resendVerification().then(() => alert('Verification email sent.')).catch(e => alert(friendlyError(e)))}>Resend</button></div>}
               <button onClick={() => { const n = prompt('Your display name', userLabel(u)); if (n && n.trim()) auth.rename(n).catch(e => alert(friendlyError(e))); setOpen(false); }} className={item}><i className="fas fa-pen w-4 text-gray-500"></i>Change display name</button>
               <button onClick={async () => { try { const f = fbx(); const snap = await f.getDocs(f.query(f.collection(f.db, SONGS), f.where('memberUids', 'array-contains', u.uid))); const songs = []; snap.forEach(d => songs.push({ id: d.id, ...d.data() })); const blob = new Blob([JSON.stringify({ app: 'Chord Chart Studio', version: '9.11', exportedAt: new Date().toISOString(), songs }, null, 2)], { type: 'application/json' }); await ccsSaveFile('CCS_all_songs_' + new Date().toISOString().slice(0, 10) + '.json', blob); } catch (e) { alert('Could not back up: ' + friendlyError(e)); } setOpen(false); }} className={item}><i className="fas fa-box-archive w-4 text-gray-500"></i>Back up all my songs</button>
-              <button onClick={async () => { const r = ['Chord Chart Studio 10.6', navigator.userAgent, new Date().toString(), 'Online: ' + navigator.onLine, 'Recent errors:'].concat((window.__ccsErrs || []).slice(-8)).join('\n'); try { await navigator.clipboard.writeText(r); alert('Problem details copied. Paste them into a message to the developer.'); } catch (e) { prompt('Copy these details:', r); } setOpen(false); }} className={item}><i className="fas fa-bug w-4 text-gray-500"></i>Copy problem report</button>
+              <button onClick={async () => { const r = ['Chord Chart Studio 11.0', navigator.userAgent, new Date().toString(), 'Online: ' + navigator.onLine, 'Recent errors:'].concat((window.__ccsErrs || []).slice(-8)).join('\n'); try { await navigator.clipboard.writeText(r); alert('Problem details copied. Paste them into a message to the developer.'); } catch (e) { prompt('Copy these details:', r); } setOpen(false); }} className={item}><i className="fas fa-bug w-4 text-gray-500"></i>Copy problem report</button>
               <button data-testid="tour-open-menu" onClick={() => { setOpen(false); ccsOpenTour(); }} className={item + ' text-gray-700'}><i className="fas fa-circle-question w-4 text-gray-500"></i>Quick tour</button>
               <a href={ccsShareBase() + 'privacy.html'} target="_blank" rel="noopener noreferrer" className={item + ' text-gray-700'}><i className="fas fa-shield-halved w-4 text-gray-500"></i>Privacy policy</a>
               <a href={ccsShareBase() + 'terms.html'} target="_blank" rel="noopener noreferrer" className={item + ' text-gray-700'}><i className="fas fa-file-lines w-4 text-gray-500"></i>Terms of use</a>
@@ -3161,11 +3161,322 @@
     }
     function ccsApplyLayout(v) { try { document.documentElement.classList.toggle('ccs-v2', v !== 'classic'); } catch (e) {} }
     ccsApplyLayout((() => { try { return localStorage.getItem('ccs_layout') || 'tidy'; } catch (e) { return 'tidy'; } })());
+    // ================= v11.0: PDF scores (library, full-screen reader, annotations) =================
+    // Files live on this device only (IndexedDB). A "song entry" is a normal CCS song whose pdfRef points at the file, so it can go in setlists.
+    const CCS_PDF_DB = {
+      db: null,
+      open() { if (this.db) return Promise.resolve(this.db); return new Promise((res, rej) => { let r; try { r = indexedDB.open('ccs_pdfscores', 1); } catch (e) { rej(e); return; } r.onupgradeneeded = () => { const d = r.result; ['files', 'blobs', 'ann'].forEach(n => { if (!d.objectStoreNames.contains(n)) d.createObjectStore(n, { keyPath: 'id' }); }); }; r.onsuccess = () => { this.db = r.result; this.db.onclose = () => { this.db = null; }; res(this.db); }; r.onerror = () => rej(r.error); }); },
+      async run(store, mode, fn) { const d = await this.open(); return new Promise((res, rej) => { const t = d.transaction(store, mode); const rq = fn(t.objectStore(store)); t.oncomplete = () => res(rq ? rq.result : undefined); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); }); },
+      put(s, v) { return this.run(s, 'readwrite', o => o.put(v)); }, get(s, id) { return this.run(s, 'readonly', o => o.get(id)); },
+      del(s, id) { return this.run(s, 'readwrite', o => o.delete(id)); }, all(s) { return this.run(s, 'readonly', o => o.getAll()); }
+    };
+    const ccsPdfDocs = {};
+    const ccsIsImgFile = f => /^image\//.test(f.type || '') || /\.(jpe?g|png|webp|gif|bmp)$/i.test(f.name || '');
+    async function ccsPdfAddFile(file, forcedId) {
+      const isImg = ccsIsImgFile(file);
+      const id = forcedId || ('p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
+      let pages = 1, title = String(file.name || 'Score').replace(/\.[^.]+$/, '');
+      if (!isImg) {
+        const lib = await ccsLoadPdfJs();
+        const doc = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported: false }).promise;
+        pages = doc.numPages;
+        try { const m = await doc.getMetadata(); const t = m && m.info && m.info.Title; if (t && String(t).trim().length > 1) title = String(t).trim().slice(0, 120); } catch (e) {}
+        try { doc.destroy(); } catch (e) {}
+      }
+      const old = forcedId ? await CCS_PDF_DB.get('files', id) : null;
+      const rec = old ? { ...old, pages: old.pages || pages } : { id, name: file.name || 'score', kind: isImg ? 'image' : 'pdf', pages, size: file.size, added: Date.now(), meta: { title, composer: '', key: '', tags: '' }, bookmarks: [] };
+      await CCS_PDF_DB.put('blobs', { id, blob: file }); await CCS_PDF_DB.put('files', rec);
+      delete ccsPdfDocs[id];
+      try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+      return rec;
+    }
+    async function ccsPdfDoc(id) {
+      if (ccsPdfDocs[id]) return ccsPdfDocs[id];
+      const rec = await CCS_PDF_DB.get('files', id); const b = await CCS_PDF_DB.get('blobs', id);
+      if (!rec || !b || !b.blob) return null;
+      let d;
+      if (rec.kind === 'image') {
+        const url = URL.createObjectURL(b.blob);
+        const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('image')); i.src = url; });
+        d = { rec, kind: 'image', img, n: 1, crops: {} };
+      } else {
+        const lib = await ccsLoadPdfJs(); const data = new Uint8Array(await b.blob.arrayBuffer());
+        const doc = await lib.getDocument({ data, isEvalSupported: false }).promise;
+        d = { rec, kind: 'pdf', lib, doc, n: doc.numPages, pages: {}, crops: {} };
+      }
+      ccsPdfDocs[id] = d; return d;
+    }
+    async function ccsPdfInfo(d, i) {
+      if (d.kind === 'image') return { w: d.img.naturalWidth, h: d.img.naturalHeight };
+      if (!d.pages[i]) { const page = await d.doc.getPage(i + 1); const vp = page.getViewport({ scale: 1 }); d.pages[i] = { page, w: vp.width, h: vp.height }; }
+      return d.pages[i];
+    }
+    const CCS_FULLBOX = { x0: 0, y0: 0, x1: 1, y1: 1 };
+    async function ccsPdfCrop(d, i) {
+      if (d.crops[i]) return d.crops[i];
+      const info = await ccsPdfInfo(d, i); const W = 360, sc = W / info.w, H = Math.max(1, Math.round(info.h * sc));
+      const c = document.createElement('canvas'); c.width = W; c.height = H; const ctx = c.getContext('2d', { willReadFrequently: true }); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+      if (d.kind === 'pdf') await info.page.render({ canvasContext: ctx, viewport: info.page.getViewport({ scale: sc }), canvas: c }).promise; else ctx.drawImage(d.img, 0, 0, W, H);
+      const dat = ctx.getImageData(0, 0, W, H).data; let x0 = W, y0 = H, x1 = -1, y1 = -1;
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const k = (y * W + x) * 4; if (dat[k] < 225 || dat[k + 1] < 225 || dat[k + 2] < 225) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
+      let r = CCS_FULLBOX;
+      if (x1 > x0 && y1 > y0) { const m = 0.014; r = { x0: Math.max(0, x0 / W - m), y0: Math.max(0, y0 / H - m), x1: Math.min(1, (x1 + 1) / W + m), y1: Math.min(1, (y1 + 1) / H + m) }; if ((r.x1 - r.x0) * (r.y1 - r.y0) < 0.2) r = CCS_FULLBOX; }
+      d.crops[i] = r; return r;
+    }
+    async function ccsPdfRender(d, i, canvas, wCss, dpr, crop, cancelled) {
+      const info = await ccsPdfInfo(d, i); const cw = crop.x1 - crop.x0, ch = crop.y1 - crop.y0;
+      let sc = (wCss * dpr) / (info.w * cw); const px = info.w * cw * sc * info.h * ch * sc; if (px > 11e6) sc *= Math.sqrt(11e6 / px);
+      const W = Math.max(1, Math.round(info.w * cw * sc)), H = Math.max(1, Math.round(info.h * ch * sc));
+      const off = document.createElement('canvas'); off.width = W; off.height = H; const ctx = off.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+      if (d.kind === 'pdf') { const vp = info.page.getViewport({ scale: sc, offsetX: -crop.x0 * info.w * sc, offsetY: -crop.y0 * info.h * sc }); await info.page.render({ canvasContext: ctx, viewport: vp, canvas: off }).promise; }
+      else ctx.drawImage(d.img, crop.x0 * info.w, crop.y0 * info.h, cw * info.w, ch * info.h, 0, 0, W, H);
+      if (cancelled()) return;
+      canvas.width = W; canvas.height = H; canvas.getContext('2d').drawImage(off, 0, 0);
+    }
+    function ccsPdfSpreads(pages, dual, cover) {
+      if (!dual) return pages.map(p => [p]);
+      const out = []; let i = 0; if (cover && pages.length) { out.push([pages[0]]); i = 1; }
+      for (; i < pages.length; i += 2) out.push(pages.slice(i, i + 2)); return out;
+    }
+    async function ccsPdfOutline(d) {
+      if (!d || d.kind !== 'pdf') return [];
+      try {
+        const o = await d.doc.getOutline(); if (!o) return []; const res = [];
+        const walk = async (items, depth) => { for (const it of items) { try { let dest = it.dest; if (typeof dest === 'string') dest = await d.doc.getDestination(dest); if (Array.isArray(dest) && dest[0]) { const idx = typeof dest[0] === 'object' ? await d.doc.getPageIndex(dest[0]) : +dest[0]; res.push({ page: idx, label: String(it.title || '').trim() || ('Page ' + (idx + 1)), depth }); } } catch (e) {} if (it.items && it.items.length && depth < 2) await walk(it.items, depth + 1); } };
+        await walk(o, 0); return res.slice(0, 300);
+      } catch (e) { return []; }
+    }
+    function PdfReader({ recId, from, to, title, onClose, onPrev, onNext }) {
+      const [d, setD] = useState(null); const [missing, setMissing] = useState(false); const [err, setErr] = useState('');
+      const pref0 = (() => { try { return JSON.parse(localStorage.getItem('ccs_pdfprefs') || '{}'); } catch (e) { return {}; } })();
+      const [dual, setDual] = useState(pref0.dual != null ? !!pref0.dual : (window.innerWidth >= 1000 && window.innerWidth > window.innerHeight));
+      const [cover, setCover] = useState(pref0.cover != null ? !!pref0.cover : true);
+      const [fit, setFit] = useState(pref0.fit === 'width' ? 'width' : 'page');
+      const [night, setNight] = useState(!!pref0.night); const [crop, setCrop] = useState(!!pref0.crop);
+      const [zoom, setZoom] = useState(1); const [sp, setSp] = useState(0); const [ui, setUi] = useState(true);
+      const [tool, setTool] = useState('none'); const [color, setColor] = useState('#dc2626');
+      const [box, setBox] = useState({ w: window.innerWidth, h: window.innerHeight });
+      const [infos, setInfos] = useState({}); const [crops, setCrops] = useState({}); const [annV, setAnnV] = useState(0);
+      const [showBm, setShowBm] = useState(false); const [bms, setBms] = useState([]); const [outline, setOutline] = useState([]); const [jump, setJump] = useState('');
+      const wrapRef = useRef(null), canv = useRef({}), over = useRef({}), annRef = useRef({}), undo = useRef([]), penSeen = useRef(false), drawing = useRef(null), saveT = useRef(null), gen = useRef(0), tap = useRef(null);
+      const dpr = Math.min(2.5, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
+      useEffect(() => { try { localStorage.setItem('ccs_pdfprefs', JSON.stringify({ dual, cover, fit, night, crop })); } catch (e) {} }, [dual, cover, fit, night, crop]);
+      useEffect(() => {
+        let dead = false;
+        (async () => {
+          const dd = await ccsPdfDoc(recId); if (dead) return; if (!dd) { setMissing(true); return; }
+          setD(dd); setBms((dd.rec.bookmarks || []).slice());
+          try { const a = await CCS_PDF_DB.get('ann', recId); if (!dead) { annRef.current = (a && a.pages) || {}; setAnnV(v => v + 1); } } catch (e) {}
+          ccsPdfOutline(dd).then(o => { if (!dead) setOutline(o); });
+        })().catch(e => { if (!dead) setErr(String(e && e.message || e)); });
+        return () => { dead = true; };
+      }, [recId]);
+      useEffect(() => { let wl = null; try { if (navigator.wakeLock) navigator.wakeLock.request('screen').then(l => { wl = l; }).catch(() => {}); } catch (e) {} return () => { try { if (wl) wl.release(); } catch (e) {} }; }, []);
+      useEffect(() => { const el = wrapRef.current; if (!el || !window.ResizeObserver) return; const ro = new ResizeObserver(() => setBox({ w: el.clientWidth, h: el.clientHeight })); ro.observe(el); setBox({ w: el.clientWidth, h: el.clientHeight }); return () => ro.disconnect(); }, [d, missing]);
+      const first = d ? Math.max(0, (from || 1) - 1) : 0; const last = d ? Math.min(d.n - 1, (to || d.n) - 1) : 0;
+      const pageList = useMemo(() => { const a = []; for (let i = first; i <= last; i++) a.push(i); return a; }, [first, last]);
+      const spreads = useMemo(() => ccsPdfSpreads(pageList, dual, cover), [pageList, dual, cover]);
+      useEffect(() => { if (sp > spreads.length - 1) setSp(Math.max(0, spreads.length - 1)); }, [spreads.length]);
+      useEffect(() => { if (wrapRef.current) { try { wrapRef.current.scrollTo(0, 0); } catch (e) {} } }, [sp, dual, fit]);
+      useEffect(() => {
+        if (!d) return; let dead = false;
+        (async () => { const need = [].concat(spreads[sp] || [], spreads[sp + 1] || []); const ni = {}, nc = {}; for (const p of need) { const inf = await ccsPdfInfo(d, p); ni[p] = { w: inf.w, h: inf.h }; if (crop) nc[p] = await ccsPdfCrop(d, p); } if (!dead) { setInfos(o => ({ ...o, ...ni })); if (crop) setCrops(o => ({ ...o, ...nc })); } })().catch(e => { if (!dead) setErr(String(e && e.message || e)); });
+        return () => { dead = true; };
+      }, [d, sp, crop, dual, cover]);
+      const cur = spreads[sp] || [];
+      const layout = useMemo(() => {
+        const items = cur.map(p => { const inf = infos[p]; if (!inf) return null; const c = (crop && crops[p]) || CCS_FULLBOX; return { p, c, dw: inf.w * (c.x1 - c.x0), dh: inf.h * (c.y1 - c.y0), pw: inf.w, ph: inf.h }; });
+        if (!items.length || items.some(x => !x)) return null;
+        const sumW = items.reduce((a, x) => a + x.dw, 0), maxH = Math.max.apply(null, items.map(x => x.dh));
+        let s = fit === 'page' ? Math.min(box.w / sumW, box.h / maxH) : box.w / sumW; s *= zoom;
+        const out = items.map(x => ({ ...x, w: Math.floor(x.dw * s), h: Math.floor(x.dh * s) }));
+        return { items: out, sig: out.map(x => [x.p, x.w, x.h, x.c.x0.toFixed(3), x.c.y0.toFixed(3), x.c.x1.toFixed(3), x.c.y1.toFixed(3)].join(',')).join('|') + '|' + dpr };
+      }, [cur.join(','), infos, crops, crop, fit, zoom, box.w, box.h]);
+      useEffect(() => {
+        if (!d || !layout) return; const g = ++gen.current;
+        (async () => { for (const L of layout.items) { const cv = canv.current[L.p]; if (!cv) continue; await ccsPdfRender(d, L.p, cv, L.w, dpr, L.c, () => g !== gen.current); } })().catch(e => setErr(String(e && e.message || e)));
+      }, [d, layout && layout.sig]);
+      const paint = p => {
+        const cv = over.current[p]; if (!cv || !layout) return; const L = layout.items.find(x => x.p === p); if (!L) return;
+        const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, cv.width, cv.height); const cw = L.c.x1 - L.c.x0, ch = L.c.y1 - L.c.y0; const fullW = (cv.width / cw);
+        (annRef.current[p] || []).forEach(s => {
+          const pts = s.pts; if (!pts || pts.length < 2) return; ctx.beginPath(); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(1, s.w * fullW); ctx.strokeStyle = s.c; ctx.globalAlpha = s.t === 'h' ? 0.35 : 1;
+          for (let k = 0; k < pts.length; k += 2) { const x = ((pts[k] - L.c.x0) / cw) * cv.width, y = ((pts[k + 1] - L.c.y0) / ch) * cv.height; if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+          if (pts.length === 2) ctx.lineTo(((pts[0] - L.c.x0) / cw) * cv.width + 0.1, ((pts[1] - L.c.y0) / ch) * cv.height); ctx.stroke(); ctx.globalAlpha = 1;
+        });
+      };
+      useEffect(() => { if (layout) layout.items.forEach(L => paint(L.p)); }, [layout && layout.sig, annV]);
+      const saveAnn = () => { clearTimeout(saveT.current); saveT.current = setTimeout(() => { CCS_PDF_DB.put('ann', { id: recId, pages: annRef.current }).catch(() => {}); }, 500); };
+      useEffect(() => () => { clearTimeout(saveT.current); }, []);
+      const ptOf = (e, L) => { const cv = over.current[L.p]; const r = cv.getBoundingClientRect(); const fx = (e.clientX - r.left) / r.width, fy = (e.clientY - r.top) / r.height; return [L.c.x0 + fx * (L.c.x1 - L.c.x0), L.c.y0 + fy * (L.c.y1 - L.c.y0)]; };
+      const eraseAt = (L, pt) => {
+        const list = annRef.current[L.p] || []; const th = 0.025; const keep = [], gone = [];
+        list.forEach(s => { let hit = false; for (let k = 0; k < s.pts.length; k += 2) { const dx = (s.pts[k] - pt[0]) * L.pw, dy = (s.pts[k + 1] - pt[1]) * L.ph; if (Math.hypot(dx, dy) < th * L.pw) { hit = true; break; } } (hit ? gone : keep).push(s); });
+        if (gone.length) { annRef.current[L.p] = keep; undo.current.push({ p: L.p, restore: gone }); paint(L.p); }
+      };
+      const onDown = (e, L) => {
+        if (tool === 'none') return; if (e.pointerType === 'pen') penSeen.current = true; if (e.pointerType === 'touch' && penSeen.current) return;
+        e.preventDefault(); try { e.currentTarget.setPointerCapture(e.pointerId); } catch (x) {}
+        const pt = ptOf(e, L);
+        if (tool === 'eraser') { drawing.current = { L, erase: true }; eraseAt(L, pt); return; }
+        const s = { t: tool === 'hi' ? 'h' : 'p', c: tool === 'hi' ? '#facc15' : color, w: tool === 'hi' ? 0.018 : 0.0028, pts: [+pt[0].toFixed(5), +pt[1].toFixed(5)] };
+        (annRef.current[L.p] = annRef.current[L.p] || []).push(s); drawing.current = { L, s }; paint(L.p);
+      };
+      const onMove = (e) => { const dr = drawing.current; if (!dr) return; const pt = ptOf(e, dr.L); if (dr.erase) { eraseAt(dr.L, pt); return; } dr.s.pts.push(+pt[0].toFixed(5), +pt[1].toFixed(5)); paint(dr.L.p); };
+      const onUp = () => { const dr = drawing.current; drawing.current = null; if (!dr) return; if (dr.s) undo.current.push({ p: dr.L.p, s: dr.s }); saveAnn(); setAnnV(v => v + 1); };
+      const doUndo = () => { const u = undo.current.pop(); if (!u) return; if (u.s) annRef.current[u.p] = (annRef.current[u.p] || []).filter(x => x !== u.s); else if (u.restore) annRef.current[u.p] = (annRef.current[u.p] || []).concat(u.restore); saveAnn(); setAnnV(v => v + 1); };
+      const clearPage = () => { (cur || []).forEach(p => { if ((annRef.current[p] || []).length) { undo.current.push({ p, restore: annRef.current[p] }); annRef.current[p] = []; } }); saveAnn(); setAnnV(v => v + 1); };
+      const go = dir => { if (dir > 0) { if (sp < spreads.length - 1) setSp(sp + 1); else if (onNext) onNext(); } else { if (sp > 0) setSp(sp - 1); else if (onPrev) onPrev(); } };
+      const goRef = useRef(go); goRef.current = go;
+      useEffect(() => {
+        const k = e => {
+          const t = e.target; if (t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+          if (e.key === 'Escape') { onClose(); return; }
+          if (['ArrowRight', 'PageDown', ' ', 'ArrowDown'].includes(e.key)) { e.preventDefault(); goRef.current(1); } else if (['ArrowLeft', 'PageUp', 'ArrowUp'].includes(e.key)) { e.preventDefault(); goRef.current(-1); }
+        };
+        window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k);
+      }, []);
+      const onTapDown = e => { if (tool !== 'none') return; tap.current = { x: e.clientX, y: e.clientY, t: Date.now() }; };
+      const onTapUp = e => {
+        const s = tap.current; tap.current = null; if (!s || tool !== 'none') return; const dx = e.clientX - s.x, dy = e.clientY - s.y, dt = Date.now() - s.t;
+        if (Math.abs(dx) < 12 && Math.abs(dy) < 12 && dt < 500) { const r = wrapRef.current.getBoundingClientRect(); const f = (e.clientX - r.left) / r.width; if (f < 0.3) go(-1); else if (f > 0.7) go(1); else setUi(u => !u); }
+        else if (zoom <= 1 && Math.abs(dx) > 60 && Math.abs(dy) < 60 && dt < 800) go(dx < 0 ? 1 : -1);
+      };
+      const saveBms = nb => { setBms(nb); if (d) { d.rec.bookmarks = nb; CCS_PDF_DB.put('files', d.rec).catch(() => {}); } };
+      const toPage = idx => { const k = spreads.findIndex(s => s.includes(idx)); if (k >= 0) { setSp(k); setShowBm(false); } };
+      const label = cur.length ? (cur.map(p => p - first + 1).join('–') + ' / ' + pageList.length) : '';
+      const btn = "h-9 min-w-[2.25rem] px-2 rounded-lg text-[12px] font-bold flex items-center justify-center gap-1 shrink-0";
+      const on = "bg-amber-400 text-black", off = "bg-white/10 text-white hover:bg-white/20";
+      const shell = ch => ReactDOM.createPortal(<div data-testid="pdf-reader" role="dialog" aria-modal="true" aria-label="PDF reader" className="fixed inset-0" style={{ zIndex: 99990, background: night ? '#000' : '#6b7280' }}>{ch}</div>, document.body);
+      if (missing) return shell(<div className="absolute inset-0 flex items-center justify-center p-6"><div className="bg-white rounded-2xl p-5 max-w-sm text-center space-y-3">
+        <div className="font-black text-base">This score is not on this device</div>
+        <div className="text-sm text-gray-600">{title || 'This song'} points to a PDF or image that has not been added here. Pick the same file to attach it. It stays on this device only.</div>
+        <label className="inline-block px-4 py-2 rounded-lg bg-black text-white font-black text-xs uppercase cursor-pointer">Choose file<input data-testid="pdf-attach" type="file" accept=".pdf,image/*" className="hidden" onChange={async e => { const f = e.target.files && e.target.files[0]; if (!f) return; try { await ccsPdfAddFile(f, recId); setMissing(false); setErr(''); const dd = await ccsPdfDoc(recId); setD(dd); } catch (x) { setErr(String(x && x.message || x)); } }} /></label>
+        <div><button onClick={onClose} className="px-3 py-1.5 text-xs font-bold text-gray-500 hover:text-black">Close</button></div>{err && <div className="text-xs text-red-600">{err}</div>}</div></div>);
+      return shell(<>
+        <div ref={wrapRef} data-testid="pdf-stage" className="absolute inset-0 overflow-auto" style={{ touchAction: tool === 'none' ? 'pan-x pan-y' : 'none' }} onPointerDown={onTapDown} onPointerUp={onTapUp}>
+          <div style={{ minWidth: '100%', minHeight: '100%', display: 'flex', alignItems: (fit === 'page' && zoom <= 1) ? 'center' : 'flex-start', justifyContent: 'center', width: 'max-content' }}>
+            {layout && layout.items.map(L => <div key={L.p} data-testid={'pdf-page-' + L.p} style={{ position: 'relative', width: L.w, height: L.h, flex: 'none', background: '#fff' }}>
+              <canvas ref={el => { if (el) canv.current[L.p] = el; }} style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', filter: night ? 'invert(1) hue-rotate(180deg)' : 'none' }} />
+              <canvas ref={el => { if (el) over.current[L.p] = el; }} width={Math.max(1, Math.round(L.w * dpr))} height={Math.max(1, Math.round(L.h * dpr))} data-testid={'pdf-ink-' + L.p}
+                onPointerDown={e => onDown(e, L)} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
+                style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', pointerEvents: tool === 'none' ? 'none' : 'auto', touchAction: 'none' }} />
+            </div>)}
+          </div>
+        </div>
+        {!layout && !err && <div className="absolute inset-0 flex items-center justify-center text-white/80 text-sm pointer-events-none">Loading…</div>}
+        {err && <div className="absolute inset-x-4 top-20 bg-red-50 text-red-700 text-xs p-3 rounded-lg">Could not show this file: {err}</div>}
+        <div className="absolute top-0 inset-x-0 transition-transform duration-200" style={{ transform: ui ? 'none' : 'translateY(-110%)', paddingTop: 'env(safe-area-inset-top)' }}>
+          <div className="text-white px-2 py-1.5 flex flex-wrap items-center gap-1.5" style={{ background: 'rgba(0,0,0,.9)' }}>
+            <button data-testid="pdf-close" aria-label="Close reader" onClick={onClose} className={btn + ' ' + off}><i className="fas fa-xmark"></i></button>
+            <div className="min-w-[8rem] flex-1 px-1"><div className="text-[12px] font-black truncate">{title || (d && d.rec.meta && d.rec.meta.title) || 'Score'}</div>
+              <div className="text-[10px] text-gray-300 flex items-center gap-1"><span data-testid="pdf-page-label" className="whitespace-nowrap">{label}</span>
+                <input aria-label="Go to page" value={jump} onChange={e => setJump(e.target.value.replace(/\D/g, ''))} onKeyDown={e => { if (e.key === 'Enter' && jump) { toPage(first + Math.min(pageList.length, Math.max(1, +jump)) - 1); setJump(''); } }} placeholder="go to" className="w-12 bg-white/10 rounded px-1 text-[10px] text-white placeholder-gray-400" /></div></div>
+            <button data-testid="pdf-bookmarks" aria-label="Bookmarks" onClick={() => setShowBm(s => !s)} className={btn + ' ' + (showBm ? on : off)}><i className="fas fa-bookmark"></i></button>
+            <button data-testid="pdf-dual" aria-label="Single or two pages" onClick={() => setDual(v => !v)} className={btn + ' ' + (dual ? on : off)}><i className={`fas ${dual ? 'fa-book-open' : 'fa-file'}`}></i><span className="hidden sm:inline">{dual ? '2 pages' : '1 page'}</span></button>
+            <button data-testid="pdf-fit" aria-label="Fit page or width" onClick={() => setFit(f => f === 'page' ? 'width' : 'page')} className={btn + ' ' + off}><i className={`fas ${fit === 'page' ? 'fa-expand' : 'fa-arrows-left-right'}`}></i><span className="hidden sm:inline">{fit === 'page' ? 'Fit page' : 'Fit width'}</span></button>
+            <button data-testid="pdf-crop" aria-label="Crop margins" onClick={() => setCrop(v => !v)} className={btn + ' ' + (crop ? on : off)}><i className="fas fa-crop-simple"></i><span className="hidden sm:inline">Crop</span></button>
+            <button data-testid="pdf-night" aria-label="Night mode" onClick={() => setNight(v => !v)} className={btn + ' ' + (night ? on : off)}><i className="fas fa-moon"></i></button>
+            <button data-testid="pdf-zoom-out" aria-label="Zoom out" onClick={() => setZoom(z => Math.max(1, +(z - 0.25).toFixed(2)))} className={btn + ' ' + off}><i className="fas fa-magnifying-glass-minus"></i></button>
+            <button data-testid="pdf-zoom-in" aria-label="Zoom in" onClick={() => setZoom(z => Math.min(3, +(z + 0.25).toFixed(2)))} className={btn + ' ' + off}><i className="fas fa-magnifying-glass-plus"></i></button>
+            <button data-testid="pdf-annotate" aria-label="Write on the page" onClick={() => setTool(t => t === 'none' ? 'pen' : 'none')} className={btn + ' ' + (tool !== 'none' ? on : off)}><i className="fas fa-pen"></i></button>
+          </div>
+          {dual && <div className="text-white text-[10px] px-3 py-1 flex items-center gap-2" style={{ background: 'rgba(0,0,0,.7)' }}><label className="flex items-center gap-1.5"><input data-testid="pdf-cover" type="checkbox" checked={cover} onChange={e => setCover(e.target.checked)} className="accent-amber-400" /> First page alone (so spreads line up like a book)</label></div>}
+        </div>
+        {tool !== 'none' && <div data-testid="pdf-annbar" className="absolute bottom-0 inset-x-0 text-white px-2 py-2 flex items-center gap-1.5 overflow-x-auto" style={{ background: 'rgba(0,0,0,.9)', paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}>
+          <button data-testid="pdf-tool-pen" onClick={() => setTool('pen')} className={btn + ' ' + (tool === 'pen' ? on : off)}><i className="fas fa-pen"></i> Pen</button>
+          <button data-testid="pdf-tool-hi" onClick={() => setTool('hi')} className={btn + ' ' + (tool === 'hi' ? on : off)}><i className="fas fa-highlighter"></i> Highlight</button>
+          <button data-testid="pdf-tool-eraser" onClick={() => setTool('eraser')} className={btn + ' ' + (tool === 'eraser' ? on : off)}><i className="fas fa-eraser"></i> Erase</button>
+          {['#dc2626', '#2563eb', '#16a34a', '#111111'].map(c => <button key={c} aria-label={'Colour ' + c} onClick={() => { setColor(c); if (tool !== 'pen') setTool('pen'); }} className="w-7 h-7 rounded-full shrink-0" style={{ background: c, outline: color === c ? '3px solid #fbbf24' : '2px solid rgba(255,255,255,.4)' }}></button>)}
+          <button data-testid="pdf-undo" onClick={doUndo} className={btn + ' ' + off}><i className="fas fa-rotate-left"></i> Undo</button>
+          <button data-testid="pdf-clearpage" onClick={() => { if (window.confirm('Remove all writing on this page?')) clearPage(); }} className={btn + ' ' + off}><i className="fas fa-trash"></i></button>
+          <button data-testid="pdf-anndone" onClick={() => setTool('none')} className={btn + ' ' + on + ' ml-auto'}>Done</button>
+        </div>}
+        {showBm && <div data-testid="pdf-bmpanel" className="absolute top-14 right-2 bottom-4 w-72 max-w-[85vw] bg-white rounded-xl shadow-2xl overflow-y-auto p-3 space-y-2">
+          <div className="flex items-center justify-between"><div className="font-black text-sm">Bookmarks</div><button onClick={() => setShowBm(false)} aria-label="Close" className="text-gray-500 px-2"><i className="fas fa-xmark"></i></button></div>
+          <button data-testid="pdf-addbm" onClick={() => { const p = cur[0]; if (p == null) return; const lb = window.prompt('Bookmark name', 'Page ' + (p + 1)); if (lb) saveBms(bms.filter(b => b.page !== p).concat([{ page: p, label: lb.slice(0, 80) }]).sort((a, b) => a.page - b.page)); }} className="w-full px-3 py-2 rounded-lg bg-black text-white text-xs font-black uppercase">Bookmark this page</button>
+          {bms.length === 0 && <div className="text-xs text-gray-500">No bookmarks yet. Add one per song, then make a song entry for each in PDF scores.</div>}
+          {bms.map(b => <div key={b.page} className="flex items-center gap-1"><button onClick={() => toPage(b.page)} className="flex-1 text-left px-2 py-2 rounded-lg hover:bg-gray-100 text-xs font-bold truncate">{b.label} <span className="text-gray-400 font-normal">p.{b.page + 1}</span></button><button aria-label="Remove bookmark" onClick={() => saveBms(bms.filter(x => x !== b))} className="text-gray-400 hover:text-red-600 px-2"><i className="fas fa-xmark"></i></button></div>)}
+          {outline.length > 0 && <>
+            <div className="flex items-center justify-between pt-2 border-t"><div className="font-black text-xs text-gray-600 uppercase">Contents in this PDF</div><button data-testid="pdf-useoutline" onClick={() => saveBms(outline.filter(o => o.depth === 0).map(o => ({ page: o.page, label: o.label.slice(0, 80) })).sort((a, b) => a.page - b.page))} className="text-[10px] font-bold text-blue-700 underline">Use as bookmarks</button></div>
+            {outline.map((o, k) => <button key={k} onClick={() => toPage(o.page)} className="w-full text-left py-1.5 rounded-lg hover:bg-gray-100 text-xs truncate" style={{ paddingLeft: 8 + o.depth * 12 }}>{o.label} <span className="text-gray-400">p.{o.page + 1}</span></button>)}
+          </>}
+        </div>}
+        {ui && tool === 'none' && <div className="absolute bottom-3 inset-x-0 flex justify-center gap-2 pointer-events-none">
+          <button data-testid="pdf-prev" aria-label="Previous page" onClick={() => go(-1)} className="pointer-events-auto w-11 h-11 rounded-full text-white flex items-center justify-center" style={{ background: 'rgba(0,0,0,.7)' }}><i className="fas fa-chevron-left"></i></button>
+          <button data-testid="pdf-next" aria-label="Next page" onClick={() => go(1)} className="pointer-events-auto w-11 h-11 rounded-full text-white flex items-center justify-center" style={{ background: 'rgba(0,0,0,.7)' }}><i className="fas fa-chevron-right"></i></button>
+        </div>}
+      </>);
+    }
+    function PdfChoiceModal({ files, onAsIs, onConvert, onBoth, onCancel }) {
+      const n = files.length; const one = n === 1;
+      const b = "w-full text-left px-4 py-3 rounded-xl border border-gray-200 hover:border-black hover:bg-gray-50";
+      return ReactDOM.createPortal(<div data-testid="pdf-choice" role="dialog" aria-modal="true" className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center p-3" style={{ zIndex: 9600 }} onClick={onCancel}>
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-4 space-y-2" onClick={e => e.stopPropagation()} style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
+          <div className="font-black text-base">How do you want to use {one ? 'this file' : n + ' files'}?</div>
+          <div className="text-xs text-gray-500 truncate">{files.map(f => f.name).join(', ')}</div>
+          <button data-testid="pdf-choice-asis" onClick={onAsIs} className={b}><div className="font-black text-sm">Use as it is</div><div className="text-[11px] text-gray-500">Keep it exactly as it is and read it full screen, like a score reader. Works for any PDF or photo.</div></button>
+          <button data-testid="pdf-choice-convert" onClick={onConvert} className={b}><div className="font-black text-sm">Convert to a chart{one ? '' : ' (first file)'}</div><div className="text-[11px] text-gray-500">Turn it into an editable Chord Chart Studio chart. Works best on typed chord sheets.</div></button>
+          <button data-testid="pdf-choice-both" onClick={onBoth} className={b}><div className="font-black text-sm">Both</div><div className="text-[11px] text-gray-500">Keep the original in PDF scores and also convert{one ? '' : ' the first one'}.</div></button>
+          <button onClick={onCancel} className="w-full py-2 text-xs font-bold text-gray-500 hover:text-black">Cancel</button>
+        </div></div>, document.body);
+    }
+    function PdfLibrary({ onClose, onOpen, onCreateSong, signedIn, onToast }) {
+      const [recs, setRecs] = useState([]); const [q, setQ] = useState(''); const [busy, setBusy] = useState(''); const [open, setOpen] = useState(null); const [form, setForm] = useState({});
+      const load = async () => { try { const a = await CCS_PDF_DB.all('files'); a.sort((x, y) => (y.added || 0) - (x.added || 0)); setRecs(a); } catch (e) { setBusy('Storage is not available in this browser: ' + (e && e.message || e)); } };
+      useEffect(() => { load(); }, []);
+      useEffect(() => { const k = e => { if (e.key === 'Escape') onClose(); }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, []);
+      const fmtSize = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round((n || 0) / 1024)) + ' KB';
+      const addFiles = async fl => { const list = Array.from(fl || []).filter(f => /\.pdf$/i.test(f.name) || f.type === 'application/pdf' || ccsIsImgFile(f)); if (!list.length) { setBusy('Choose PDF files or photos.'); return; } let ok = 0, bad = ''; for (const f of list) { setBusy('Adding ' + f.name + '…'); try { await ccsPdfAddFile(f); ok++; } catch (e) { bad = 'Could not add ' + f.name + ': ' + String(e && (e.detail || e.message) || e).slice(0, 160); } } setBusy(bad); if (ok) onToast(ok + (ok > 1 ? ' files' : ' file') + ' added'); load(); };
+      const ql = q.trim().toLowerCase(); const shown = recs.filter(r => !ql || [r.meta && r.meta.title, r.name, r.meta && r.meta.composer, r.meta && r.meta.tags, r.meta && r.meta.key].join(' ').toLowerCase().includes(ql));
+      const inp = "w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm";
+      const del = async r => { if (!window.confirm('Remove "' + ((r.meta && r.meta.title) || r.name) + '" from this device? Song entries that use it will ask for the file again.')) return; await CCS_PDF_DB.del('files', r.id); await CCS_PDF_DB.del('blobs', r.id); await CCS_PDF_DB.del('ann', r.id); delete ccsPdfDocs[r.id]; load(); };
+      return ReactDOM.createPortal(<div data-testid="pdf-lib" role="dialog" aria-modal="true" aria-label="PDF scores" className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center sm:p-4" style={{ zIndex: 9500 }} onClick={onClose}>
+        <div className="w-full sm:max-w-2xl bg-white sm:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col" style={{ maxHeight: '92vh', paddingBottom: 'env(safe-area-inset-bottom)' }} onClick={e => e.stopPropagation()}>
+          <div className="px-4 pt-4 pb-2 flex items-center gap-2"><div className="font-black text-base flex-1"><i className="fas fa-file-pdf text-red-600 mr-2"></i>PDF scores</div><button onClick={onClose} aria-label="Close" className="px-2 text-gray-500 hover:text-black"><i className="fas fa-xmark"></i></button></div>
+          <div className="px-4 pb-2 flex gap-2">
+            <input data-testid="pdf-search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search title, composer, tag or key" className={inp} />
+            <label className="shrink-0 px-3 py-2 rounded-lg bg-black text-white text-xs font-black uppercase cursor-pointer flex items-center gap-1"><i className="fas fa-plus"></i> Add<input data-testid="pdf-lib-input" type="file" multiple accept=".pdf,image/*" className="hidden" onChange={e => { const f = e.target.files; addFiles(f); e.target.value = ''; }} /></label>
+          </div>
+          {busy && <div data-testid="pdf-lib-busy" className="px-4 text-xs text-amber-700">{busy}</div>}
+          <div className="px-4 pb-4 overflow-y-auto space-y-2" style={{ minHeight: 120 }}>
+            {recs.length === 0 && <div className="text-sm text-gray-500 py-6 text-center">No scores yet. Tap Add to bring in PDFs or photos of sheet music. They stay on this device.</div>}
+            {shown.map(r => <div key={r.id} data-testid="pdf-card" className="border border-gray-200 rounded-xl p-3">
+              <div className="flex items-center gap-2"><div className="min-w-0 flex-1"><div className="font-black text-sm truncate">{(r.meta && r.meta.title) || r.name}</div>
+                <div className="text-[11px] text-gray-500 truncate">{[r.meta && r.meta.composer, r.meta && r.meta.key, r.pages + (r.pages === 1 ? ' page' : ' pages'), fmtSize(r.size), r.meta && r.meta.tags].filter(Boolean).join(' · ')}</div></div>
+                <button data-testid="pdf-card-open" onClick={() => onOpen(r)} className="px-3 py-2 rounded-lg bg-black text-white text-[11px] font-black uppercase">Open</button></div>
+              <div className="flex gap-1.5 mt-2 flex-wrap">
+                <button data-testid="pdf-card-info" onClick={() => { setOpen(open && open.id === r.id && open.mode === 'meta' ? null : { id: r.id, mode: 'meta' }); setForm({ ...(r.meta || {}) }); }} className="px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-[11px] font-bold">Details</button>
+                <button data-testid="pdf-card-song" onClick={() => { setOpen(open && open.id === r.id && open.mode === 'song' ? null : { id: r.id, mode: 'song' }); setForm({ title: (r.meta && r.meta.title) || r.name, from: 1, to: r.pages }); }} className="px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-[11px] font-bold">Make song entry</button>
+                <button onClick={() => del(r)} className="px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-red-50 text-[11px] font-bold text-red-700 ml-auto">Remove</button>
+              </div>
+              {open && open.id === r.id && open.mode === 'meta' && <div className="mt-2 grid grid-cols-2 gap-2">
+                <input aria-label="Title" className={inp + ' col-span-2'} placeholder="Title" value={form.title || ''} onChange={e => setForm({ ...form, title: e.target.value })} />
+                <input aria-label="Composer" className={inp} placeholder="Composer / artist" value={form.composer || ''} onChange={e => setForm({ ...form, composer: e.target.value })} />
+                <input aria-label="Key" className={inp} placeholder="Key" value={form.key || ''} onChange={e => setForm({ ...form, key: e.target.value })} />
+                <input aria-label="Tags" className={inp + ' col-span-2'} placeholder="Tags, separated by commas" value={form.tags || ''} onChange={e => setForm({ ...form, tags: e.target.value })} />
+                <button data-testid="pdf-meta-save" onClick={async () => { const nr = { ...r, meta: { title: (form.title || '').slice(0, 120), composer: (form.composer || '').slice(0, 120), key: (form.key || '').slice(0, 20), tags: (form.tags || '').slice(0, 200) } }; await CCS_PDF_DB.put('files', nr); if (ccsPdfDocs[r.id]) ccsPdfDocs[r.id].rec = nr; setOpen(null); load(); }} className="col-span-2 px-3 py-2 rounded-lg bg-black text-white text-xs font-black uppercase">Save details</button>
+              </div>}
+              {open && open.id === r.id && open.mode === 'song' && <div className="mt-2 space-y-2">
+                {!signedIn ? <div className="text-xs text-gray-600">Sign in to make song entries. Setlists need an account, and an entry is what lets a PDF (or part of one) sit in a setlist next to your charts.</div> : <>
+                  <div className="text-[11px] text-gray-500">A song entry is a normal song that opens this file at the pages you choose. One book can become many songs.</div>
+                  <input aria-label="Song title" className={inp} value={form.title || ''} onChange={e => setForm({ ...form, title: e.target.value })} />
+                  <div className="flex items-center gap-2 text-xs">Pages <input aria-label="From page" type="number" min="1" max={r.pages} className={inp + ' !w-20'} value={form.from} onChange={e => setForm({ ...form, from: e.target.value })} /> to <input aria-label="To page" type="number" min="1" max={r.pages} className={inp + ' !w-20'} value={form.to} onChange={e => setForm({ ...form, to: e.target.value })} /></div>
+                  <div className="flex gap-2 flex-wrap">
+                    <button data-testid="pdf-song-create" onClick={async () => { const a = Math.min(r.pages, Math.max(1, +form.from || 1)), b = Math.min(r.pages, Math.max(a, +form.to || r.pages)); try { await onCreateSong(r, a, b, form.title); setOpen(null); } catch (e) { setBusy('Could not create the entry: ' + (e && e.message || e)); } }} className="px-3 py-2 rounded-lg bg-black text-white text-xs font-black uppercase">Create song entry</button>
+                    {(r.bookmarks || []).length > 0 && <button data-testid="pdf-song-split" onClick={async () => { const bm = (r.bookmarks || []).slice().sort((x, y) => x.page - y.page); if (!window.confirm('Create ' + bm.length + ' song entries, one per bookmark?')) return; try { for (let k = 0; k < bm.length; k++) { const a = bm[k].page + 1, b = k + 1 < bm.length ? Math.max(a, bm[k + 1].page) : r.pages; await onCreateSong(r, a, b, bm[k].label, true); } onToast(bm.length + ' song entries created'); setOpen(null); } catch (e) { setBusy('Could not create entries: ' + (e && e.message || e)); } }} className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-xs font-bold">One song per bookmark ({(r.bookmarks || []).length})</button>}
+                  </div></>}
+              </div>}
+            </div>)}
+          </div>
+        </div></div>, document.body);
+    }
     // ================= v10.6: first-run quick tour (replayable from settings) =================
     const CCS_TOUR = [
       { icon: 'fa-music', title: 'Welcome to Chord Chart Studio', body: ['One place for all your charts, in one clean style that every player can read.', 'This 1-minute tour shows the main things. You can open it again any time from Settings.'] },
       { icon: 'fa-keyboard', title: 'Write a chart quickly', body: ['Tap a bar and type the chord, for example Cmaj7, Dm7 or G7/B.', 'The tools on the left set bars, time signature and extras. The keyboard button at the bottom right helps with chords.', 'Write turns stylus handwriting into chords. Pencil lets you draw freehand on the chart.'] },
       { icon: 'fa-file-import', title: 'Bring in your old charts', body: ['Import text or lyrics with chords, PDFs, and other chart files. Use Import many files for a whole folder at once.', 'Everything comes out in the same style. On a phone, open All tools (the menu) to find Import.'] },
+      { icon: 'fa-file-pdf', title: 'Read PDFs like a score reader', body: ['Open PDF scores from All tools to keep PDFs and photos of sheet music exactly as they are. Read them full screen, switch to two pages on a big screen, crop margins, and write on them with Apple Pencil.', 'Make a song entry from a whole PDF, or just some pages, and it can sit in a setlist next to your charts. These files stay on this device.'] },
       { icon: 'fa-sliders', title: 'Make a chart fit you', body: ['Change Capo, switch between ABC and EZ notation, transpose the song, or view it for a Bb, Eb or F instrument.', 'These live in the tool row and in All tools.'] },
       { icon: 'fa-list-ol', title: 'Setlists and gigs', body: ['Put songs in a setlist, jump between them, and press Perform for a full-screen gig view.', 'Page turns work with Bluetooth pedals and keyboards. Half-page turns are in Settings.'] },
       { icon: 'fa-headphones', title: 'Practise with audio', body: ['Add a recording or a YouTube link to any song. Loop bars, slow it down, and let the chart follow along.', 'Minimise the panel and a slim player bar stays at the bottom. Open Audio from All tools.'] },
@@ -3909,7 +4220,7 @@
       };
       const [showSetlistModal, setShowSetlistModal] = useState(false);
       const [showImportModal, setShowImportModal] = useState(false);
-      const [showMore, setShowMore] = useState(false); const [pdfState, setPdfState] = useState(null); const [bulk, setBulk] = useState(null); const [pdfRef, setPdfRef] = useState(null);
+      const [showMore, setShowMore] = useState(false); const [pdfState, setPdfState] = useState(null); const [pdfChoice, setPdfChoice] = useState(null); const [pdfLibOpen, setPdfLibOpen] = useState(false); const [pdfView, setPdfView] = useState(null); const [bulk, setBulk] = useState(null); const [pdfRef, setPdfRef] = useState(null);
       const [importText, setImportText] = useState("");
       
       // Clipboard State for Bars and Lines
@@ -4104,6 +4415,11 @@
         await openCloudSong(songId); setIsGigMode(true); setShowTools(false); setGigFitMode('fit');
         try { const el = document.documentElement; if (!document.fullscreenElement && el.requestFullscreen) { const r = el.requestFullscreen(); if (r && r.catch) r.catch(() => {}); } } catch (e) {}
       };
+      useEffect(() => {
+        const r = song && song.pdfRef;
+        if (r && r.id) { const key = 's:' + (cloudId || song.id) + ':' + r.id + ':' + (r.from || 1); setPdfView(v => (v && v.key === key) ? v : { recId: r.id, from: r.from, to: r.to, title: song.title, key, fromSong: true }); }
+        else setPdfView(v => (v && v.fromSong) ? null : v);
+      }, [cloudId, song && song.pdfRef && song.pdfRef.id, song && song.pdfRef && song.pdfRef.from, song && song.pdfRef && song.pdfRef.to]);
       const slItemsNow = (user && setlistId && activeSl.data && activeSl.data.items) || [];
       const slIxNow = slItemsNow.findIndex(i => i.songId === cloudId);
       slNavRef.current = { prev: slIxNow > 0 ? slItemsNow[slIxNow - 1] : null, next: slIxNow >= 0 && slIxNow < slItemsNow.length - 1 ? slItemsNow[slIxNow + 1] : null, go: openCloudSong };
@@ -4727,6 +5043,29 @@
         } catch (e) { setDialog({ type: 'alert', message: 'Failed to save the file. Please try again.' }); }
       };
       const loadJSON = (e) => {
+        const fl = Array.from(e.target.files || []); const isDocF = f => /\.pdf$/i.test(f.name) || f.type === 'application/pdf' || ccsIsImgFile(f);
+        if (fl.length && fl.every(isDocF)) { e.target.value = ''; setPdfChoice({ files: fl }); return; }
+        loadJSONraw(e);
+      };
+      const runConvert = (files) => loadJSONraw({ target: { files, value: '' } });
+      const pdfAsIs = async (files, alsoConvert) => {
+        setPdfChoice(null);
+        try {
+          if (files.some(f => f.size > 150 * 1024 * 1024)) { setDialog({ type: 'alert', message: 'That file is too large (over 150 MB).' }); return; }
+          const recs = []; for (const f of files) recs.push(await ccsPdfAddFile(f));
+          showToast(recs.length > 1 ? recs.length + ' files added to PDF scores' : 'Added to PDF scores');
+          if (alsoConvert) runConvert(files.slice(0, 1));
+          else if (recs.length === 1) setPdfView({ recId: recs[0].id, key: 'lib:' + recs[0].id, title: (recs[0].meta && recs[0].meta.title) || recs[0].name });
+          else setPdfLibOpen(true);
+        } catch (e) { setDialog({ type: 'alert', message: 'Could not keep that file on this device (' + String(e && e.message || e).slice(0, 120) + '). Storage may be full or blocked in this browser.' }); }
+      };
+      const createPdfSong = async (rec, from, to, title) => {
+        if (!user) throw new Error('Sign in first');
+        const base = getFreshSong();
+        const sg = sanitizeSong({ ...base, id: Date.now(), title: String(title || (rec.meta && rec.meta.title) || rec.name).slice(0, 200), artist: (rec.meta && rec.meta.composer) || '', key: (rec.meta && rec.meta.key) || '', pdfRef: { id: rec.id, name: rec.name, from, to, pages: rec.pages } }, getFreshSong);
+        await ccsOps.create(user, sg); showToast('Song entry added to your library. Add it to a setlist from Setlists.');
+      };
+      const loadJSONraw = (e) => {
         const allFiles = Array.from(e.target.files || []);
         const file = allFiles[0];
         if (!file) return;
@@ -6813,6 +7152,10 @@
           )}
 
           {!isExporting && <CcsTour />}
+          {!isExporting && pdfChoice && <PdfChoiceModal files={pdfChoice.files} onAsIs={() => pdfAsIs(pdfChoice.files, false)} onBoth={() => pdfAsIs(pdfChoice.files, true)} onConvert={() => { const f = pdfChoice.files; setPdfChoice(null); runConvert(f); }} onCancel={() => setPdfChoice(null)} />}
+          {!isExporting && pdfLibOpen && <PdfLibrary signedIn={!!user} onToast={showToast} onClose={() => setPdfLibOpen(false)} onOpen={r => { setPdfView({ recId: r.id, key: 'lib:' + r.id, title: (r.meta && r.meta.title) || r.name }); }} onCreateSong={createPdfSong} />}
+          {!isExporting && pdfView && (() => { const nv = slNavRef.current || {}; const fs = pdfView.fromSong; return <PdfReader key={pdfView.key} recId={pdfView.recId} from={pdfView.from} to={pdfView.to} title={pdfView.title} onClose={() => setPdfView(null)} onPrev={fs && nv.prev && nv.go ? () => nv.go(nv.prev.songId) : null} onNext={fs && nv.next && nv.go ? () => nv.go(nv.next.songId) : null} />; })()}
+          {!isExporting && !pdfView && song.pdfRef && <button data-testid="pdf-open-chip" onClick={() => setPdfView({ recId: song.pdfRef.id, from: song.pdfRef.from, to: song.pdfRef.to, title: song.title, key: 's:' + (cloudId || song.id) + ':' + song.pdfRef.id + ':' + (song.pdfRef.from || 1), fromSong: true })} className="fixed left-1/2 -translate-x-1/2 z-[120] px-4 py-2.5 rounded-full bg-black text-white text-xs font-black uppercase shadow-xl flex items-center gap-2" style={{ bottom: 'calc(80px + var(--ccs-dock, 0px))' }}><i className="fas fa-file-pdf"></i> Open PDF</button>}
           {!isExporting && <PracticePlayer song={song} setSong={setSong} readOnly={isReadOnly} open={audioOpen} setOpen={setAudioOpen} />}
           {bulk && <BulkImportModal initial={bulk.entries} user={user} fresh={getFreshSong} onClose={() => setBulk(null)} onSave={saveBulk} />}
           <FirstRunTour />
@@ -7244,6 +7587,7 @@
                       </div>
 
                       <LayoutTile />
+                      <button data-testid="pdf-lib-open" onClick={() => { setShowTools(false); setPdfLibOpen(true); }} className="flex flex-col items-start p-2.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-left"><span className="flex items-center gap-1 font-bold text-gray-800"><i className="fas fa-file-pdf text-red-600 text-[11px]"></i> PDF scores</span><span className="text-[10px] text-gray-500 mt-0.5">Read PDFs and photos full screen, write on them, put them in setlists.</span></button>
                       <button data-testid="tour-open" onClick={() => ccsOpenTour()} className="flex flex-col items-start p-2.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-left"><span className="flex items-center gap-1 font-bold text-gray-800"><i className="fas fa-circle-question text-amber-600 text-[11px]"></i> Quick tour</span><span className="text-[10px] text-gray-500 mt-0.5">A one-minute walk through the main features.</span></button>
 
                       <div className="flex flex-col items-start p-2.5 rounded-lg border border-gray-200 bg-gray-50 text-left">
