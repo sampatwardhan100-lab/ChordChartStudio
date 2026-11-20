@@ -389,7 +389,7 @@
     // ============================================================================
     // CCS v8 core: data safety + three-way merge (spreadsheet-style live editing)
     // ============================================================================
-    const CCS_APP_VERSION = "11.0.2";
+    const CCS_APP_VERSION = "11.1.0";
     const ccsRid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
     const ccsEq = (a, b) => a === b || JSON.stringify(a) === JSON.stringify(b);
     const ccsClamp = (n, lo, hi, d) => (Number.isFinite(Number(n)) ? Math.min(hi, Math.max(lo, Number(n))) : d);
@@ -1079,7 +1079,7 @@
               {u.email && u.emailVerified === false && <div className="text-xs bg-amber-50 border border-amber-300 rounded-md p-2.5 mb-2">Email not verified. Verify it to accept invitations. <button className="text-blue-700 underline font-bold" onClick={() => auth.resendVerification().then(() => alert('Verification email sent.')).catch(e => alert(friendlyError(e)))}>Resend</button></div>}
               <button onClick={() => { const n = prompt('Your display name', userLabel(u)); if (n && n.trim()) auth.rename(n).catch(e => alert(friendlyError(e))); setOpen(false); }} className={item}><i className="fas fa-pen w-4 text-gray-500"></i>Change display name</button>
               <button onClick={async () => { try { const f = fbx(); const snap = await f.getDocs(f.query(f.collection(f.db, SONGS), f.where('memberUids', 'array-contains', u.uid))); const songs = []; snap.forEach(d => songs.push({ id: d.id, ...d.data() })); const blob = new Blob([JSON.stringify({ app: 'Chord Chart Studio', version: '9.11', exportedAt: new Date().toISOString(), songs }, null, 2)], { type: 'application/json' }); await ccsSaveFile('CCS_all_songs_' + new Date().toISOString().slice(0, 10) + '.json', blob); } catch (e) { alert('Could not back up: ' + friendlyError(e)); } setOpen(false); }} className={item}><i className="fas fa-box-archive w-4 text-gray-500"></i>Back up all my songs</button>
-              <button onClick={async () => { const r = ['Chord Chart Studio 11.0.2', navigator.userAgent, new Date().toString(), 'Online: ' + navigator.onLine, 'Recent errors:'].concat((window.__ccsErrs || []).slice(-8)).join('\n'); try { await navigator.clipboard.writeText(r); alert('Problem details copied. Paste them into a message to the developer.'); } catch (e) { prompt('Copy these details:', r); } setOpen(false); }} className={item}><i className="fas fa-bug w-4 text-gray-500"></i>Copy problem report</button>
+              <button onClick={async () => { const r = ['Chord Chart Studio 11.1.0', navigator.userAgent, new Date().toString(), 'Online: ' + navigator.onLine, 'Recent errors:'].concat((window.__ccsErrs || []).slice(-8)).join('\n'); try { await navigator.clipboard.writeText(r); alert('Problem details copied. Paste them into a message to the developer.'); } catch (e) { prompt('Copy these details:', r); } setOpen(false); }} className={item}><i className="fas fa-bug w-4 text-gray-500"></i>Copy problem report</button>
               <button data-testid="tour-open-menu" onClick={() => { setOpen(false); ccsOpenTour(); }} className={item + ' text-gray-700'}><i className="fas fa-circle-question w-4 text-gray-500"></i>Quick tour</button>
               <a href={ccsShareBase() + 'privacy.html'} target="_blank" rel="noopener noreferrer" className={item + ' text-gray-700'}><i className="fas fa-shield-halved w-4 text-gray-500"></i>Privacy policy</a>
               <a href={ccsShareBase() + 'terms.html'} target="_blank" rel="noopener noreferrer" className={item + ' text-gray-700'}><i className="fas fa-file-lines w-4 text-gray-500"></i>Terms of use</a>
@@ -3233,10 +3233,13 @@
       if (cancelled()) return;
       canvas.width = W; canvas.height = H; canvas.getContext('2d').drawImage(off, 0, 0);
     }
-    function ccsPdfSpreads(pages, dual, cover) {
-      if (!dual) return pages.map(p => [p]);
-      const out = []; let i = 0; if (cover && pages.length) { out.push([pages[0]]); i = 1; }
-      for (; i < pages.length; i += 2) out.push(pages.slice(i, i + 2)); return out;
+    function ccsPdfSpreads(pages, dual, mode) {
+      // null = an empty half, so every spread keeps two equal slots (like a real book)
+      if (!dual || pages.length < 2) return pages.map(p => [p]);
+      const out = [];
+      if (mode === 'slide') { for (let i = 0; i < pages.length - 1; i++) out.push([pages[i], pages[i + 1]]); return out; }
+      let i = 0; if (mode === 'book') { out.push([null, pages[0]]); i = 1; }
+      for (; i < pages.length; i += 2) out.push([pages[i], i + 1 < pages.length ? pages[i + 1] : null]); return out;
     }
     async function ccsPdfOutline(d) {
       if (!d || d.kind !== 'pdf') return [];
@@ -3250,7 +3253,7 @@
       const [d, setD] = useState(null); const [missing, setMissing] = useState(false); const [err, setErr] = useState('');
       const pref0 = (() => { try { return JSON.parse(localStorage.getItem('ccs_pdfprefs') || '{}'); } catch (e) { return {}; } })();
       const [dual, setDual] = useState(pref0.dual != null ? !!pref0.dual : (window.innerWidth >= 1000 && window.innerWidth > window.innerHeight));
-      const [cover, setCover] = useState(pref0.cover != null ? !!pref0.cover : true);
+      const [spreadMode, setSpreadMode] = useState(['pairs', 'book', 'slide'].includes(pref0.spread) ? pref0.spread : 'pairs'); const pendPage = useRef(null); const turnDir = useRef(1);
       const [fit, setFit] = useState(pref0.fit === 'width' ? 'width' : 'page');
       const [night, setNight] = useState(!!pref0.night); const [crop, setCrop] = useState(!!pref0.crop);
       const [zoom, setZoom] = useState(1); const [sp, setSp] = useState(0); const [ui, setUi] = useState(true);
@@ -3260,7 +3263,7 @@
       const [showBm, setShowBm] = useState(false); const [bms, setBms] = useState([]); const [outline, setOutline] = useState([]); const [jump, setJump] = useState('');
       const wrapRef = useRef(null), canv = useRef({}), over = useRef({}), annRef = useRef({}), undo = useRef([]), penSeen = useRef(false), drawing = useRef(null), saveT = useRef(null), gen = useRef(0), tap = useRef(null);
       const dpr = Math.min(2.5, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
-      useEffect(() => { try { localStorage.setItem('ccs_pdfprefs', JSON.stringify({ dual, cover, fit, night, crop })); } catch (e) {} }, [dual, cover, fit, night, crop]);
+      useEffect(() => { try { localStorage.setItem('ccs_pdfprefs', JSON.stringify({ dual, spread: spreadMode, fit, night, crop })); } catch (e) {} }, [dual, spreadMode, fit, night, crop]);
       useEffect(() => {
         let dead = false;
         (async () => {
@@ -3275,18 +3278,21 @@
       useEffect(() => { const el = wrapRef.current; if (!el || !window.ResizeObserver) return; const ro = new ResizeObserver(() => setBox({ w: el.clientWidth, h: el.clientHeight })); ro.observe(el); setBox({ w: el.clientWidth, h: el.clientHeight }); return () => ro.disconnect(); }, [d, missing]);
       const first = d ? Math.max(0, (from || 1) - 1) : 0; const last = d ? Math.min(d.n - 1, (to || d.n) - 1) : 0;
       const pageList = useMemo(() => { const a = []; for (let i = first; i <= last; i++) a.push(i); return a; }, [first, last]);
-      const spreads = useMemo(() => ccsPdfSpreads(pageList, dual, cover), [pageList, dual, cover]);
+      const spreads = useMemo(() => ccsPdfSpreads(pageList, dual, spreadMode), [pageList, dual, spreadMode]);
+      useEffect(() => { if (pendPage.current != null) { const k = spreads.findIndex(x => x.includes(pendPage.current)); if (k >= 0) setSp(k); pendPage.current = null; } }, [spreads]);
       useEffect(() => { if (sp > spreads.length - 1) setSp(Math.max(0, spreads.length - 1)); }, [spreads.length]);
       useEffect(() => { if (wrapRef.current) { try { wrapRef.current.scrollTo(0, 0); } catch (e) {} } }, [sp, dual, fit]);
       useEffect(() => {
         if (!d) return; let dead = false;
-        (async () => { const need = [].concat(spreads[sp] || [], spreads[sp + 1] || []); const ni = {}, nc = {}; for (const p of need) { const inf = await ccsPdfInfo(d, p); ni[p] = { w: inf.w, h: inf.h }; if (crop) nc[p] = await ccsPdfCrop(d, p); } if (!dead) { setInfos(o => ({ ...o, ...ni })); if (crop) setCrops(o => ({ ...o, ...nc })); } })().catch(e => { if (!dead) setErr(String(e && e.message || e)); });
+        (async () => { const need = [].concat(spreads[sp] || [], spreads[sp + 1] || []).filter(p => p != null); const ni = {}, nc = {}; for (const p of need) { const inf = await ccsPdfInfo(d, p); ni[p] = { w: inf.w, h: inf.h }; if (crop) nc[p] = await ccsPdfCrop(d, p); } if (!dead) { setInfos(o => ({ ...o, ...ni })); if (crop) setCrops(o => ({ ...o, ...nc })); } })().catch(e => { if (!dead) setErr(String(e && e.message || e)); });
         return () => { dead = true; };
-      }, [d, sp, crop, dual, cover]);
+      }, [d, sp, crop, dual, spreadMode]);
       const cur = spreads[sp] || [];
       const layout = useMemo(() => {
-        const items = cur.map(p => { const inf = infos[p]; if (!inf) return null; const c = (crop && crops[p]) || CCS_FULLBOX; return { p, c, dw: inf.w * (c.x1 - c.x0), dh: inf.h * (c.y1 - c.y0), pw: inf.w, ph: inf.h }; });
+        const items = cur.map((p, gi) => { if (p == null) return { ghost: true, p: 'g' + gi }; const inf = infos[p]; if (!inf) return null; const c = (crop && crops[p]) || CCS_FULLBOX; return { p, c, dw: inf.w * (c.x1 - c.x0), dh: inf.h * (c.y1 - c.y0), pw: inf.w, ph: inf.h }; });
         if (!items.length || items.some(x => !x)) return null;
+        const realIt = items.filter(x => !x.ghost); if (!realIt.length) return null;
+        items.forEach(x => { if (x.ghost) { const r = realIt[0]; x.c = CCS_FULLBOX; x.dw = r.dw; x.dh = r.dh; x.pw = r.pw; x.ph = r.ph; } });
         const sumW = items.reduce((a, x) => a + x.dw, 0), maxH = Math.max.apply(null, items.map(x => x.dh));
         let s = fit === 'page' ? Math.min(box.w / sumW, box.h / maxH) : box.w / sumW; s *= zoom;
         const out = items.map(x => ({ ...x, w: Math.floor(x.dw * s), h: Math.floor(x.dh * s) }));
@@ -3325,8 +3331,8 @@
       const onMove = (e) => { const dr = drawing.current; if (!dr) return; const pt = ptOf(e, dr.L); if (dr.erase) { eraseAt(dr.L, pt); return; } dr.s.pts.push(+pt[0].toFixed(5), +pt[1].toFixed(5)); paint(dr.L.p); };
       const onUp = () => { const dr = drawing.current; drawing.current = null; if (!dr) return; if (dr.s) undo.current.push({ p: dr.L.p, s: dr.s }); saveAnn(); setAnnV(v => v + 1); };
       const doUndo = () => { const u = undo.current.pop(); if (!u) return; if (u.s) annRef.current[u.p] = (annRef.current[u.p] || []).filter(x => x !== u.s); else if (u.restore) annRef.current[u.p] = (annRef.current[u.p] || []).concat(u.restore); saveAnn(); setAnnV(v => v + 1); };
-      const clearPage = () => { (cur || []).forEach(p => { if ((annRef.current[p] || []).length) { undo.current.push({ p, restore: annRef.current[p] }); annRef.current[p] = []; } }); saveAnn(); setAnnV(v => v + 1); };
-      const go = dir => { if (dir > 0) { if (sp < spreads.length - 1) setSp(sp + 1); else if (onNext) onNext(); } else { if (sp > 0) setSp(sp - 1); else if (onPrev) onPrev(); } };
+      const clearPage = () => { (cur || []).filter(p => p != null).forEach(p => { if ((annRef.current[p] || []).length) { undo.current.push({ p, restore: annRef.current[p] }); annRef.current[p] = []; } }); saveAnn(); setAnnV(v => v + 1); };
+      const go = dir => { turnDir.current = dir; if (dir > 0) { if (sp < spreads.length - 1) setSp(sp + 1); else if (onNext) onNext(); } else { if (sp > 0) setSp(sp - 1); else if (onPrev) onPrev(); } };
       const goRef = useRef(go); goRef.current = go;
       useEffect(() => {
         const k = e => {
@@ -3344,7 +3350,8 @@
       };
       const saveBms = nb => { setBms(nb); if (d) { d.rec.bookmarks = nb; CCS_PDF_DB.put('files', d.rec).catch(() => {}); } };
       const toPage = idx => { const k = spreads.findIndex(s => s.includes(idx)); if (k >= 0) { setSp(k); setShowBm(false); } };
-      const label = cur.length ? (cur.map(p => p - first + 1).join('–') + ' / ' + pageList.length) : '';
+      const curReal = cur.filter(p => p != null); const label = curReal.length ? (curReal.map(p => p - first + 1).join('–') + ' / ' + pageList.length) : '';
+      const keepPage = fn => { const x = cur.find(p => p != null); pendPage.current = x == null ? null : x; fn(); };
       const btn = "h-9 min-w-[2.25rem] px-2 rounded-lg text-[12px] font-bold flex items-center justify-center gap-1 shrink-0";
       const on = "bg-amber-400 text-black", off = "bg-white/10 text-white hover:bg-white/20";
       const shell = ch => ReactDOM.createPortal(<div data-testid="pdf-reader" role="dialog" aria-modal="true" aria-label="PDF reader" className="fixed inset-0" style={{ zIndex: 99990, background: night ? '#000' : '#6b7280' }}>{ch}</div>, document.body);
@@ -3355,13 +3362,16 @@
         <div><button onClick={onClose} className="px-3 py-1.5 text-xs font-bold text-gray-500 hover:text-black">Close</button></div>{err && <div className="text-xs text-red-600">{err}</div>}</div></div>);
       return shell(<>
         <div ref={wrapRef} data-testid="pdf-stage" className="absolute inset-0 overflow-auto" style={{ touchAction: tool === 'none' ? 'pan-x pan-y' : 'none' }} onPointerDown={onTapDown} onPointerUp={onTapUp}>
+          <style>{'@keyframes ccsTurnF{from{opacity:.3;transform:translateX(6%)}to{opacity:1;transform:none}}@keyframes ccsTurnB{from{opacity:.3;transform:translateX(-6%)}to{opacity:1;transform:none}}@media (prefers-reduced-motion: reduce){.ccs-turn{animation:none!important}}'}</style>
           <div style={{ minWidth: '100%', minHeight: '100%', display: 'flex', alignItems: (fit === 'page' && zoom <= 1) ? 'center' : 'flex-start', justifyContent: 'center', width: 'max-content' }}>
-            {layout && layout.items.map(L => <div key={L.p} data-testid={'pdf-page-' + L.p} style={{ position: 'relative', width: L.w, height: L.h, flex: 'none', background: '#fff' }}>
+            <div key={sp + ':' + dual + ':' + spreadMode} className="ccs-turn" style={{ display: 'flex', flex: 'none', animation: (turnDir.current > 0 ? 'ccsTurnF' : 'ccsTurnB') + ' .2s ease-out' }}>
+            {layout && layout.items.map(L => L.ghost ? <div key={L.p} data-testid="pdf-ghost" style={{ width: L.w, height: L.h, flex: 'none' }}></div> : <div key={L.p} data-testid={'pdf-page-' + L.p} style={{ position: 'relative', width: L.w, height: L.h, flex: 'none', background: '#fff' }}>
               <canvas ref={el => { if (el) canv.current[L.p] = el; }} style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', filter: night ? 'invert(1) hue-rotate(180deg)' : 'none' }} />
               <canvas ref={el => { if (el) over.current[L.p] = el; }} width={Math.max(1, Math.round(L.w * dpr))} height={Math.max(1, Math.round(L.h * dpr))} data-testid={'pdf-ink-' + L.p}
                 onPointerDown={e => onDown(e, L)} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
                 style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', pointerEvents: tool === 'none' ? 'none' : 'auto', touchAction: 'none' }} />
             </div>)}
+            </div>
           </div>
         </div>
         {!layout && !err && <div className="absolute inset-0 flex items-center justify-center text-white/80 text-sm pointer-events-none">Loading…</div>}
@@ -3373,7 +3383,7 @@
               <div className="text-[10px] text-gray-300 flex items-center gap-1"><span data-testid="pdf-page-label" className="whitespace-nowrap">{label}</span>
                 <input aria-label="Go to page" value={jump} onChange={e => setJump(e.target.value.replace(/\D/g, ''))} onKeyDown={e => { if (e.key === 'Enter' && jump) { toPage(first + Math.min(pageList.length, Math.max(1, +jump)) - 1); setJump(''); } }} placeholder="go to" className="w-12 bg-white/10 rounded px-1 text-[10px] text-white placeholder-gray-400" /></div></div>
             <button data-testid="pdf-bookmarks" aria-label="Bookmarks" onClick={() => setShowBm(s => !s)} className={btn + ' ' + (showBm ? on : off)}><i className="fas fa-bookmark"></i></button>
-            <button data-testid="pdf-dual" aria-label="Single or two pages" onClick={() => setDual(v => !v)} className={btn + ' ' + (dual ? on : off)}><i className={`fas ${dual ? 'fa-book-open' : 'fa-file'}`}></i><span className="hidden sm:inline">{dual ? '2 pages' : '1 page'}</span></button>
+            <button data-testid="pdf-dual" aria-label="Single or two pages" onClick={() => keepPage(() => setDual(v => !v))} className={btn + ' ' + (dual ? on : off)}><i className={`fas ${dual ? 'fa-book-open' : 'fa-file'}`}></i><span className="hidden sm:inline">{dual ? '2 pages' : '1 page'}</span></button>
             <button data-testid="pdf-fit" aria-label="Fit page or width" onClick={() => setFit(f => f === 'page' ? 'width' : 'page')} className={btn + ' ' + off}><i className={`fas ${fit === 'page' ? 'fa-expand' : 'fa-arrows-left-right'}`}></i><span className="hidden sm:inline">{fit === 'page' ? 'Fit page' : 'Fit width'}</span></button>
             <button data-testid="pdf-crop" aria-label="Crop margins" onClick={() => setCrop(v => !v)} className={btn + ' ' + (crop ? on : off)}><i className="fas fa-crop-simple"></i><span className="hidden sm:inline">Crop</span></button>
             <button data-testid="pdf-night" aria-label="Night mode" onClick={() => setNight(v => !v)} className={btn + ' ' + (night ? on : off)}><i className="fas fa-moon"></i></button>
@@ -3381,7 +3391,8 @@
             <button data-testid="pdf-zoom-in" aria-label="Zoom in" onClick={() => setZoom(z => Math.min(3, +(z + 0.25).toFixed(2)))} className={btn + ' ' + off}><i className="fas fa-magnifying-glass-plus"></i></button>
             <button data-testid="pdf-annotate" aria-label="Write on the page" onClick={() => setTool(t => t === 'none' ? 'pen' : 'none')} className={btn + ' ' + (tool !== 'none' ? on : off)}><i className="fas fa-pen"></i></button>
           </div>
-          {dual && <div className="text-white text-[10px] px-3 py-1 flex items-center gap-2" style={{ background: 'rgba(0,0,0,.7)' }}><label className="flex items-center gap-1.5"><input data-testid="pdf-cover" type="checkbox" checked={cover} onChange={e => setCover(e.target.checked)} className="accent-amber-400" /> First page alone (so spreads line up like a book)</label></div>}
+          {dual && <div data-testid="pdf-spreadbar" className="text-white text-[10px] px-3 py-1.5 flex flex-wrap items-center gap-1.5" style={{ background: 'rgba(0,0,0,.7)' }}><span className="text-gray-300 font-bold uppercase tracking-wider mr-1">Two pages</span>
+            {[['pairs', '1 | 2 · 3 | 4', 'Pairs'], ['book', '1 · 2 | 3 · 4 | 5', 'Book'], ['slide', '1 | 2 → 2 | 3', 'Slide']].map(([k, ex, nm]) => <button key={k} data-testid={'pdf-spread-' + k} onClick={() => keepPage(() => setSpreadMode(k))} className={'px-2.5 py-1 rounded-md font-bold ' + (spreadMode === k ? on : off)} title={ex}>{nm} <span className="font-normal opacity-70">{ex}</span></button>)}</div>}
         </div>
         {tool !== 'none' && <div data-testid="pdf-annbar" className="absolute bottom-0 inset-x-0 text-white px-2 py-2 flex items-center gap-1.5 overflow-x-auto" style={{ background: 'rgba(0,0,0,.9)', paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}>
           <button data-testid="pdf-tool-pen" onClick={() => setTool('pen')} className={btn + ' ' + (tool === 'pen' ? on : off)}><i className="fas fa-pen"></i> Pen</button>
@@ -3394,7 +3405,7 @@
         </div>}
         {showBm && <div data-testid="pdf-bmpanel" className="absolute top-14 right-2 bottom-4 w-72 max-w-[85vw] bg-white rounded-xl shadow-2xl overflow-y-auto p-3 space-y-2">
           <div className="flex items-center justify-between"><div className="font-black text-sm">Bookmarks</div><button onClick={() => setShowBm(false)} aria-label="Close" className="text-gray-500 px-2"><i className="fas fa-xmark"></i></button></div>
-          <button data-testid="pdf-addbm" onClick={() => { const p = cur[0]; if (p == null) return; const lb = window.prompt('Bookmark name', 'Page ' + (p + 1)); if (lb) saveBms(bms.filter(b => b.page !== p).concat([{ page: p, label: lb.slice(0, 80) }]).sort((a, b) => a.page - b.page)); }} className="w-full px-3 py-2 rounded-lg bg-black text-white text-xs font-black uppercase">Bookmark this page</button>
+          <button data-testid="pdf-addbm" onClick={() => { const p = curReal[0]; if (p == null) return; const lb = window.prompt('Bookmark name', 'Page ' + (p + 1)); if (lb) saveBms(bms.filter(b => b.page !== p).concat([{ page: p, label: lb.slice(0, 80) }]).sort((a, b) => a.page - b.page)); }} className="w-full px-3 py-2 rounded-lg bg-black text-white text-xs font-black uppercase">Bookmark this page</button>
           {bms.length === 0 && <div className="text-xs text-gray-500">No bookmarks yet. Add one per song, then make a song entry for each in PDF scores.</div>}
           {bms.map(b => <div key={b.page} className="flex items-center gap-1"><button onClick={() => toPage(b.page)} className="flex-1 text-left px-2 py-2 rounded-lg hover:bg-gray-100 text-xs font-bold truncate">{b.label} <span className="text-gray-400 font-normal">p.{b.page + 1}</span></button><button aria-label="Remove bookmark" onClick={() => saveBms(bms.filter(x => x !== b))} className="text-gray-400 hover:text-red-600 px-2"><i className="fas fa-xmark"></i></button></div>)}
           {outline.length > 0 && <>
@@ -3407,6 +3418,45 @@
           <button data-testid="pdf-next" aria-label="Next page" onClick={() => go(1)} className="pointer-events-auto w-11 h-11 rounded-full text-white flex items-center justify-center" style={{ background: 'rgba(0,0,0,.7)' }}><i className="fas fa-chevron-right"></i></button>
         </div>}
       </>);
+    }
+    function CcsBarMenu({ m, bar, hasClip, ops, onClose }) {
+      const [tempo, setTempo] = useState(bar.tempo || '');
+      useEffect(() => { const k = e => { if (e.key === 'Escape') onClose(); }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, []);
+      const phone = window.innerWidth < 560; const W = 300; const pad = 8;
+      const pos = phone ? { left: pad, right: pad, bottom: 'calc(' + pad + 'px + env(safe-area-inset-bottom))' } : { left: Math.max(pad, Math.min(m.x, window.innerWidth - W - pad)), top: Math.max(pad, Math.min(m.y, window.innerHeight - 520)), width: W };
+      const KEYS = ['C', 'G', 'D', 'A', 'E', 'B', 'F#', 'F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb', 'Am', 'Em', 'Bm', 'F#m', 'C#m', 'Dm', 'Gm', 'Cm', 'Fm', 'Bbm'];
+      const lab = "text-[10px] font-black text-gray-500 uppercase tracking-widest";
+      const chip = "px-2 py-1 rounded-md border text-[11px] font-bold ";
+      const act = "py-2 rounded-lg border border-gray-200 bg-white hover:bg-black hover:text-white text-[11px] font-bold flex flex-col items-center justify-center gap-0.5 disabled:opacity-30";
+      const applyTempo = () => { const v = String(tempo).replace(/[^0-9]/g, ''); if (v && (+v < 20 || +v > 400)) return; ops.patch({ tempo: v }); };
+      return ReactDOM.createPortal(<div data-testid="bar-menu-backdrop" className="no-print" style={{ position: 'fixed', inset: 0, zIndex: 9000, background: phone ? 'rgba(0,0,0,.35)' : 'transparent' }} onPointerDown={e => { if (e.target === e.currentTarget) onClose(); }} onContextMenu={e => { e.preventDefault(); if (e.target === e.currentTarget) onClose(); }}>
+        <div data-testid="bar-menu" role="menu" aria-label="Bar options" className="rounded-2xl shadow-2xl border border-gray-300 p-3 space-y-2.5" style={{ position: 'fixed', background: '#fff', color: '#111', maxHeight: '86vh', overflowY: 'auto', ...pos }}>
+          <div className="flex items-center justify-between"><div className="text-xs font-black uppercase">Bar {m.barIdx + 1} <span className="text-gray-400 font-bold">· line {m.lineIdx + 1}</span></div><button aria-label="Close" onClick={onClose} className="px-2 text-gray-500"><i className="fas fa-xmark"></i></button></div>
+          <div><div className={lab}>Tempo from this bar</div><div className="flex items-center gap-1.5 mt-1">
+            <span className="font-serif text-lg font-black">{'\u2669'} =</span>
+            <input data-testid="bm-tempo" inputMode="numeric" value={tempo} onChange={e => setTempo(e.target.value.replace(/[^0-9]/g, '').slice(0, 3))} onKeyDown={e => { if (e.key === 'Enter') { applyTempo(); onClose(); } }} placeholder="BPM" className="w-16 border-2 border-gray-300 rounded-md px-2 py-1 text-sm font-bold" style={{ fontSize: 16 }} />
+            <button data-testid="bm-tempo-set" onClick={() => { applyTempo(); onClose(); }} className={chip + 'bg-black text-white border-black'}>Set</button>
+            <button data-testid="bm-tempo-clear" onClick={() => { setTempo(''); ops.patch({ tempo: '' }); onClose(); }} className={chip + 'bg-white border-gray-300'}>Clear</button></div></div>
+          <div><div className={lab}>Time signature from this bar</div><div className="flex flex-wrap gap-1 mt-1">
+            {['4/4', '3/4', '2/4', '6/8', '5/4', '7/8', '12/8'].map(ts => <button key={ts} data-testid={'bm-ts-' + ts.replace('/', '-')} onClick={() => { ops.patch({ timeSignature: ts }); onClose(); }} className={chip + (bar.timeSignature === ts ? 'bg-black text-white border-black' : 'bg-white border-gray-300')}>{ts}</button>)}
+            <button data-testid="bm-ts-clear" onClick={() => { ops.patch({ timeSignature: '' }); onClose(); }} className={chip + 'bg-white border-gray-300'}>Clear</button></div></div>
+          <div><div className={lab}>Key from this bar</div><div className="flex items-center gap-1.5 mt-1">
+            <select data-testid="bm-key" value={bar.keyChange || ''} onChange={e => { ops.patch({ keyChange: e.target.value }); onClose(); }} className="flex-1 border-2 border-gray-300 rounded-md px-2 py-1 text-sm font-bold bg-white" style={{ fontSize: 16 }}>
+              <option value="">No key change</option>{KEYS.map(k => <option key={k} value={k}>{k}</option>)}</select></div></div>
+          <div className="grid grid-cols-4 gap-1.5 pt-1">
+            <button data-testid="bm-copy" className={act} onClick={() => { ops.copy(); onClose(); }}><i className="fas fa-copy"></i>Copy</button>
+            <button data-testid="bm-cut" className={act} onClick={() => { ops.cut(); onClose(); }}><i className="fas fa-scissors"></i>Cut</button>
+            <button data-testid="bm-paste" className={act} disabled={!hasClip} onClick={() => { ops.paste('replace'); onClose(); }}><i className="fas fa-paste"></i>Paste</button>
+            <button data-testid="bm-del" className={act + ' text-red-600'} onClick={() => { ops.del(); onClose(); }}><i className="fas fa-trash"></i>Delete</button>
+            <button data-testid="bm-left" className={act} disabled={m.barIdx === 0} onClick={() => { ops.move(-1); onClose(); }}><i className="fas fa-arrow-left"></i>Move</button>
+            <button data-testid="bm-right" className={act} onClick={() => { ops.move(1); onClose(); }}><i className="fas fa-arrow-right"></i>Move</button>
+            <button data-testid="bm-paste-before" className={act} disabled={!hasClip} onClick={() => { ops.paste('insert-before'); onClose(); }}><i className="fas fa-angles-left"></i>Paste before</button>
+            <button data-testid="bm-paste-after" className={act} disabled={!hasClip} onClick={() => { ops.paste('insert-after'); onClose(); }}><i className="fas fa-angles-right"></i>Paste after</button>
+            <button data-testid="bm-ins-before" className={act} onClick={() => { ops.insert(false); onClose(); }}><i className="fas fa-plus"></i>Blank before</button>
+            <button data-testid="bm-ins-after" className={act} onClick={() => { ops.insert(true); onClose(); }}><i className="fas fa-plus"></i>Blank after</button>
+            <button data-testid="bm-more" className={act + ' col-span-2'} onClick={() => { ops.more(); onClose(); }}><i className="fas fa-sliders"></i>All bar options</button>
+          </div>
+        </div></div>, document.body);
     }
     function PdfChoiceModal({ files, onAsIs, onConvert, onBoth, onCancel }) {
       const n = files.length; const one = n === 1;
@@ -4109,6 +4159,26 @@
       useEffect(() => { activeBarInfoRef.current = activeBarInfo; }, [activeBarInfo]);
       
       const [editingBarProps, setEditingBarProps] = useState(null);
+      const [barMenu, setBarMenu] = useState(null); const lpRef = useRef(null);
+      const openBarMenu = (x, y, secId, lineIdx, barIdx) => { if (isReadOnly) return; setBarMenu({ x, y, secId, lineIdx, barIdx }); };
+      const barLpDown = (e, secId, lineIdx, barIdx) => {
+        if (e.pointerType === 'mouse' || isGigMode || isReadOnly || (stylusMode && freehandMode)) return;
+        const x = e.clientX, y = e.clientY; if (lpRef.current) clearTimeout(lpRef.current.t);
+        lpRef.current = { x, y, fired: false, t: setTimeout(() => {
+          const L = lpRef.current; if (!L) return; L.fired = true;
+          try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch (er) {}
+          try { if (navigator.vibrate) navigator.vibrate(12); } catch (er) {}
+          const stop = ev => { if (ev.cancelable) ev.preventDefault(); ev.stopPropagation(); };
+          window.addEventListener('touchend', stop, { capture: true, once: true, passive: false }); window.addEventListener('click', stop, { capture: true, once: true });
+          setTimeout(() => { window.removeEventListener('touchend', stop, true); window.removeEventListener('click', stop, true); }, 800);
+          openBarMenu(x, y, secId, lineIdx, barIdx);
+        }, 480) };
+      };
+      const barLpMove = e => { const L = lpRef.current; if (L && !L.fired && Math.hypot(e.clientX - L.x, e.clientY - L.y) > 10) { clearTimeout(L.t); lpRef.current = null; } };
+      const barLpEnd = () => { const L = lpRef.current; if (L && !L.fired) clearTimeout(L.t); lpRef.current = null; };
+      const patchBar = (secId, lineIdx, barIdx, f) => setSong(prev => ({ ...prev, sections: prev.sections.map(sc => sc.id !== secId ? sc : { ...sc, lines: sc.lines.map((l, li) => li !== lineIdx ? l : l.map((b, bi) => { if (bi !== barIdx) return b; const nb = { ...b, ...f }; Object.keys(f).forEach(k => { if (f[k] === '' || f[k] == null) delete nb[k]; }); return nb; })) }) }));
+      const insertBarAt = (secId, lineIdx, barIdx, after) => setSong(prev => ({ ...prev, sections: prev.sections.map(sc => { if (sc.id !== secId) return sc; const lines = [...sc.lines]; const line = [...lines[lineIdx]]; line.splice(barIdx + (after ? 1 : 0), 0, { leftBar: '|', rightBar: '', slots: [''] }); lines[lineIdx] = line; return { ...sc, lines }; }) }));
+      const deleteBarAt = (secId, lineIdx, barIdx) => setSong(prev => ({ ...prev, sections: prev.sections.map(sc => { if (sc.id !== secId) return sc; let lines = [...sc.lines]; if (lines[lineIdx].length > 1) { const line = [...lines[lineIdx]]; line.splice(barIdx, 1); lines[lineIdx] = line; } else if (lines.length > 1) lines.splice(lineIdx, 1); else lines[lineIdx] = [{ leftBar: '|', rightBar: '', slots: [''] }]; return { ...sc, lines }; }) }));
       const [showTools, setShowTools] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
       const [showSettings, setShowSettings] = useState(false);
       const [showAbout, setShowAbout] = useState(false);
@@ -5972,13 +6042,15 @@
                 <div key={barIdx} className={`flex-1 relative flex flex-col h-full group/bar bg-transparent ${isGigMode ? (gigTheme === 'dark' ? 'border-gray-600' : 'border-black') : 'border-black'} cursor-text transition-all ${(stylusMode && !freehandMode) ? 'p-1' : ''} ${isBarActive && !isGigMode ? 'ring-2 ring-blue-500 ring-offset-1 bg-blue-50/30 rounded-sm' : ''}`}
                   data-bid={bar.bid} onClick={(e) => { e.stopPropagation(); if(!isGigMode && (!stylusMode || !freehandMode)) setActiveBarInfo({ secId: section.id, lineIdx, barIdx, slotIdx: 0 }); }}
                   onDoubleClick={(e) => { if (!isGigMode && (!stylusMode || !freehandMode)) { e.stopPropagation(); setEditingBarProps({ secId: section.id, lineIdx, barIdx, data: bar }); } }}
-                  onContextMenu={(e) => { if (!isGigMode && (!stylusMode || !freehandMode)) { e.preventDefault(); e.stopPropagation(); setEditingBarProps({ secId: section.id, lineIdx, barIdx, data: bar }); } }}
+                  onContextMenu={(e) => { if (!isGigMode && (!stylusMode || !freehandMode)) { e.preventDefault(); e.stopPropagation(); openBarMenu(e.clientX, e.clientY, section.id, lineIdx, barIdx); } }} onPointerDown={(e) => barLpDown(e, section.id, lineIdx, barIdx)} onPointerMove={barLpMove} onPointerUp={barLpEnd} onPointerCancel={barLpEnd}
                   style={{ borderLeftStyle: bar.leftBar === '||' || bar.leftBar === '|:' ? 'double' : 'solid', borderLeftWidth: bar.leftBar ? (bar.leftBar === '||' || bar.leftBar === '|:' ? '6px' : '2px') : '0', borderRightStyle: bar.rightBar === '||' || bar.rightBar === ':|' ? 'double' : 'solid', borderRightWidth: bar.rightBar ? (bar.rightBar === '||' || bar.rightBar === ':|' ? '6px' : '2px') : '0', marginLeft: bar.leftBar ? '-2px' : '0' }}
                 >
                   {!isGigMode && !isExporting && <BarOverlay bid={bar.bid} others={presence} nComments={commentCounts[bar.bid] || 0} hasPrivate={!!priv.notes[bar.bid]} />}
-                  {bar.topText && (
-                      <div className={`absolute -top-4 left-0 font-bold text-[11px] px-1 z-20 ${isGigMode ? (gigTheme === 'dark' ? 'bg-black text-gray-300' : 'bg-white text-gray-600') : 'bg-white text-gray-600'}`}>
-                          <CcsTopText t={bar.topText} />
+                  {(bar.topText || bar.tempo || bar.keyChange) && (
+                      <div className={`absolute -top-4 left-0 font-bold text-[11px] px-1 z-20 flex items-center gap-1.5 whitespace-nowrap ${isGigMode ? (gigTheme === 'dark' ? 'bg-black text-gray-300' : 'bg-white text-gray-600') : 'bg-white text-gray-600'}`}>
+                          {bar.tempo && <span data-testid="bar-tempo" className="text-black" style={{ fontFamily: 'serif' }}>{'\u2669'} = {bar.tempo}</span>}
+                          {bar.keyChange && <span data-testid="bar-key" className="text-black">Key: {String(bar.keyChange).replace(/#/g, '\u266f').replace(/^(.)b/, '$1\u266d')}</span>}
+                          {bar.topText && <CcsTopText t={bar.topText} />}
                       </div>
                   )}
                   {ccsParseTop(bar.topText).volta.length > 0 && <div data-testid="volta-bracket" className="absolute top-0 left-0 right-0 h-2 border-t-2 border-l-2 border-current pointer-events-none z-10"></div>}
@@ -7270,6 +7342,11 @@
                   </div>
                 </div>
 
+                <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-2 gap-2">
+                  <div><label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase tracking-widest">Tempo from this bar</label><input data-testid="barprops-tempo" type="text" inputMode="numeric" value={editingBarProps.data.tempo || ''} onChange={(e) => setEditingBarProps({...editingBarProps, data: {...editingBarProps.data, tempo: e.target.value.replace(/[^0-9]/g, '').slice(0, 3)}})} className="w-full border-2 border-gray-300 p-1.5 text-sm font-bold outline-none focus:border-black bg-gray-50" placeholder="e.g. 140" /></div>
+                  <div><label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase tracking-widest">Key from this bar</label><input data-testid="barprops-key" type="text" value={editingBarProps.data.keyChange || ''} onChange={(e) => setEditingBarProps({...editingBarProps, data: {...editingBarProps.data, keyChange: e.target.value.slice(0, 4)}})} className="w-full border-2 border-gray-300 p-1.5 text-sm font-bold outline-none focus:border-black bg-gray-50" placeholder="e.g. G or Em" /></div>
+                </div>
+
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <label className="block text-[10px] font-bold text-gray-500 mb-2 uppercase tracking-widest">Structural Actions</label>
                   <div className="flex flex-col gap-2">
@@ -7341,6 +7418,10 @@
               </div>
             </div>
           )}
+
+          {barMenu && (() => { const sc = song.sections.find(x => x.id === barMenu.secId); const bar = sc && sc.lines[barMenu.lineIdx] && sc.lines[barMenu.lineIdx][barMenu.barIdx]; if (!bar) return null; const m = barMenu;
+            const ops = { patch: f => patchBar(m.secId, m.lineIdx, m.barIdx, f), copy: () => copyBar(m.secId, m.lineIdx, m.barIdx), cut: () => cutBar(m.secId, m.lineIdx, m.barIdx), paste: mode => pasteBar(m.secId, m.lineIdx, m.barIdx, mode), move: d => moveBar(m.secId, m.lineIdx, m.barIdx, d), insert: after => insertBarAt(m.secId, m.lineIdx, m.barIdx, after), del: () => deleteBarAt(m.secId, m.lineIdx, m.barIdx), more: () => setEditingBarProps({ secId: m.secId, lineIdx: m.lineIdx, barIdx: m.barIdx, data: bar }) };
+            return <CcsBarMenu key={m.secId + ':' + m.lineIdx + ':' + m.barIdx} m={m} bar={bar} hasClip={!!barClipboard} ops={ops} onClose={() => setBarMenu(null)} />; })()}
 
           {/* Preferences Settings Modal */}
           {showSettings && (
