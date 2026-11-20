@@ -91,9 +91,9 @@
       html.ccs-v2 { --ui-h: 30px; --ui-r: 8px; --ui-line: #e5e7eb; --ui-ink: #111827; --ui-soft: #f3f4f6; }
       @media (min-width: 1024px) {
         html.ccs-v2 [data-ui="header"] > div:first-child { height: 52px; }
-        html.ccs-v2 [data-ui="header"] > div:first-child button, html.ccs-v2 [data-ui="header"] > div:first-child select, html.ccs-v2 [data-ui="libbar"] button, html.ccs-v2 [data-ui="libbar"] select { height: var(--ui-h) !important; min-height: 0 !important; border-radius: var(--ui-r) !important; font-size: 12px !important; font-weight: 600 !important; text-transform: none !important; letter-spacing: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; white-space: nowrap; flex-shrink: 0; box-sizing: border-box; }
-        html.ccs-v2 [data-ui="ribbon"] button, html.ccs-v2 [data-ui="ribbon"] select { height: 26px !important; min-height: 0 !important; border-radius: 6px !important; font-size: 12px !important; font-weight: 600 !important; text-transform: none !important; letter-spacing: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; white-space: nowrap; flex-shrink: 0; box-sizing: border-box; }
-        html.ccs-v2 [data-ui="header"] > div:first-child button:not(:has(span)):not([title^="Toggle On"]), html.ccs-v2 [data-ui="header"] [title^="Undo"], html.ccs-v2 [data-ui="header"] [title^="Redo"] { width: var(--ui-h); padding-left: 0 !important; padding-right: 0 !important; justify-content: center; }
+        html.ccs-v2 [data-ui="header"] > div:first-child button:not(.absolute *):not(.fixed *), html.ccs-v2 [data-ui="header"] > div:first-child select:not(.absolute *):not(.fixed *), html.ccs-v2 [data-ui="libbar"] button:not(.absolute *):not(.fixed *), html.ccs-v2 [data-ui="libbar"] select:not(.absolute *):not(.fixed *) { height: var(--ui-h) !important; min-height: 0 !important; border-radius: var(--ui-r) !important; font-size: 12px !important; font-weight: 600 !important; text-transform: none !important; letter-spacing: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; white-space: nowrap; flex-shrink: 0; box-sizing: border-box; }
+        html.ccs-v2 [data-ui="ribbon"] button:not(.absolute *):not(.fixed *), html.ccs-v2 [data-ui="ribbon"] select:not(.absolute *):not(.fixed *) { height: 26px !important; min-height: 0 !important; border-radius: 6px !important; font-size: 12px !important; font-weight: 600 !important; text-transform: none !important; letter-spacing: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; white-space: nowrap; flex-shrink: 0; box-sizing: border-box; }
+        html.ccs-v2 [data-ui="header"] > div:first-child button:not(:has(span)):not([title^="Toggle On"]):not(.absolute *):not(.fixed *), html.ccs-v2 [data-ui="header"] [title^="Undo"], html.ccs-v2 [data-ui="header"] [title^="Redo"] { width: var(--ui-h); padding-left: 0 !important; padding-right: 0 !important; justify-content: center; }
         html.ccs-v2 [data-ui="header"] [title^="Undo"], html.ccs-v2 [data-ui="header"] [title^="Redo"] { height: 28px !important; }
         html.ccs-v2 [data-ui="header"] button[title="Launch Fullscreen Gig Mode"] { background: var(--ui-ink) !important; color: #fff !important; border: 1px solid var(--ui-ink) !important; box-shadow: none !important; }
         html.ccs-v2 [data-ui="header"] button[title="Launch Fullscreen Gig Mode"] svg { color: #fbbf24; }
@@ -106,17 +106,17 @@
         html.ccs-v2 [data-ui="ribbon"] > div > div > div, html.ccs-v2 [data-ui="ribbon"] > div > div > button { border-radius: 8px !important; border-color: var(--ui-line) !important; }
         html.ccs-v2 [data-ui="rail"] { width: 76px !important; background: #fafafa; }
         html.ccs-v2 [data-ui="rail"] > div > div:first-child { font-size: 10px !important; color: #374151 !important; letter-spacing: .12em !important; background: #f3f4f6; }
-        html.ccs-v2 [data-ui="rail"] button { min-height: 32px; border-radius: 8px !important; border-color: var(--ui-line) !important; background: #fff !important; color: var(--ui-ink); }
-        html.ccs-v2 [data-ui="rail"] button:hover:not(:disabled) { background: var(--ui-ink) !important; color: #fff; }
+        html.ccs-v2 [data-ui="rail"] button:not(.absolute *):not(.fixed *) { min-height: 32px; border-radius: 8px !important; border-color: var(--ui-line) !important; background: #fff !important; color: var(--ui-ink); }
+        html.ccs-v2 [data-ui="rail"] button:hover:not(:disabled):not(.absolute *):not(.fixed *) { background: var(--ui-ink) !important; color: #fff; }
       }
       html.ccs-v2 [data-ui="fab-left"] > button, html.ccs-v2 [data-ui="fab-right"] { min-height: 48px; border-radius: 9999px; box-shadow: 0 6px 18px rgba(0,0,0,.22); }
       html.ccs-v2 [data-ui="fab-left"] { bottom: calc(24px + var(--ccs-dock, 0px)) !important; }
       html.ccs-v2 [data-ui="fab-right"] { bottom: calc(24px + var(--ccs-dock, 0px)) !important; right: 24px !important; }
       @media (max-width: 1023px) {
-        html.ccs-v2 [data-ui="ribbon"] .grid > *, html.ccs-v2 [data-ui="libbar"] button { border-radius: 10px !important; height: 40px !important; min-height: 40px !important; box-sizing: border-box; }
+        html.ccs-v2 [data-ui="ribbon"] .grid > *, html.ccs-v2 [data-ui="libbar"] button:not(.absolute *):not(.fixed *) { border-radius: 10px !important; height: 40px !important; min-height: 40px !important; box-sizing: border-box; }
         html.ccs-v2 [data-ui="ribbon"] .grid > * { padding-top: 0 !important; padding-bottom: 0 !important; }
         html.ccs-v2 [data-ui="ribbon"], html.ccs-v2 [data-ui="libbar"] { padding-top: 6px !important; padding-bottom: 6px !important; }
-        html.ccs-v2 [data-ui="ribbon"] .grid > * > button, html.ccs-v2 [data-ui="ribbon"] .grid > * > select { height: 32px !important; }
+        html.ccs-v2 [data-ui="ribbon"] .grid > * > button:not(.absolute *):not(.fixed *), html.ccs-v2 [data-ui="ribbon"] .grid > * > select:not(.absolute *):not(.fixed *) { height: 32px !important; }
         html.ccs-v2 [data-ui="fab-left"] { left: 16px !important; bottom: calc(20px + var(--ccs-dock, 0px)) !important; }
         html.ccs-v2 [data-ui="fab-right"] { right: 16px !important; bottom: calc(20px + var(--ccs-dock, 0px)) !important; }
       }
@@ -134,8 +134,8 @@
         html.ccs-v2 [data-ui="ribbon"] .grid > * { padding-left: 6px !important; padding-right: 6px !important; font-size: 12px; min-width: 0; }
         html.ccs-v2 [data-ui="ribbon"] .grid > * { gap: 0 !important; }
         html.ccs-v2 [data-ui="ribbon"] .grid > div:not(.ccs-m-only) { padding-left: 2px !important; padding-right: 2px !important; justify-content: space-evenly !important; overflow: hidden; }
-        html.ccs-v2 [data-ui="ribbon"] .grid > div button { padding-left: 3px !important; padding-right: 3px !important; font-size: 11px !important; gap: 3px !important; min-width: 0; }
-        html.ccs-v2 [data-ui="ribbon"] .grid > div button i { font-size: 10px; }
+        html.ccs-v2 [data-ui="ribbon"] .grid > div button:not(.absolute *):not(.fixed *) { padding-left: 3px !important; padding-right: 3px !important; font-size: 11px !important; gap: 3px !important; min-width: 0; }
+        html.ccs-v2 [data-ui="ribbon"] .grid > div button:not(.absolute *):not(.fixed *) i { font-size: 10px; }
         html.ccs-v2 [data-ui="ribbon"] .grid > div select { font-size: 11px !important; padding-left: 0 !important; padding-right: 0 !important; min-width: 0; max-width: 100%; }
         html.ccs-v2 [data-ui="ribbon"] .grid > div > span { margin-right: 2px !important; font-size: 9px !important; }
         html.ccs-v2 [data-ui="ribbon"] .grid > .ccs-m-only { height: 40px !important; border-radius: 10px !important; font-size: 11px; padding-left: 4px !important; padding-right: 4px !important; }
@@ -144,7 +144,7 @@
       @media (max-width: 380px) {
         html.ccs-v2 [data-ui="header"] > div:first-child { gap: 3px !important; }
         html.ccs-v2 [data-ui="header"] > div:first-child > * { gap: 3px !important; }
-        html.ccs-v2 [data-ui="header"] > div:first-child button { padding-left: 6px !important; padding-right: 6px !important; min-width: 0 !important; }
+        html.ccs-v2 [data-ui="header"] > div:first-child button:not(.absolute *):not(.fixed *) { padding-left: 6px !important; padding-right: 6px !important; min-width: 0 !important; }
         html.ccs-v2 [data-ui="header"] img { width: 32px !important; height: 32px !important; }
         html.ccs-v2 [data-ui="header"] > div:first-child > div:first-child { padding-right: 0 !important; margin-right: 0 !important; }
       }
@@ -389,7 +389,7 @@
     // ============================================================================
     // CCS v8 core: data safety + three-way merge (spreadsheet-style live editing)
     // ============================================================================
-    const CCS_APP_VERSION = "11.0";
+    const CCS_APP_VERSION = "11.0.1";
     const ccsRid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
     const ccsEq = (a, b) => a === b || JSON.stringify(a) === JSON.stringify(b);
     const ccsClamp = (n, lo, hi, d) => (Number.isFinite(Number(n)) ? Math.min(hi, Math.max(lo, Number(n))) : d);
@@ -1079,7 +1079,7 @@
               {u.email && u.emailVerified === false && <div className="text-xs bg-amber-50 border border-amber-300 rounded-md p-2.5 mb-2">Email not verified. Verify it to accept invitations. <button className="text-blue-700 underline font-bold" onClick={() => auth.resendVerification().then(() => alert('Verification email sent.')).catch(e => alert(friendlyError(e)))}>Resend</button></div>}
               <button onClick={() => { const n = prompt('Your display name', userLabel(u)); if (n && n.trim()) auth.rename(n).catch(e => alert(friendlyError(e))); setOpen(false); }} className={item}><i className="fas fa-pen w-4 text-gray-500"></i>Change display name</button>
               <button onClick={async () => { try { const f = fbx(); const snap = await f.getDocs(f.query(f.collection(f.db, SONGS), f.where('memberUids', 'array-contains', u.uid))); const songs = []; snap.forEach(d => songs.push({ id: d.id, ...d.data() })); const blob = new Blob([JSON.stringify({ app: 'Chord Chart Studio', version: '9.11', exportedAt: new Date().toISOString(), songs }, null, 2)], { type: 'application/json' }); await ccsSaveFile('CCS_all_songs_' + new Date().toISOString().slice(0, 10) + '.json', blob); } catch (e) { alert('Could not back up: ' + friendlyError(e)); } setOpen(false); }} className={item}><i className="fas fa-box-archive w-4 text-gray-500"></i>Back up all my songs</button>
-              <button onClick={async () => { const r = ['Chord Chart Studio 11.0', navigator.userAgent, new Date().toString(), 'Online: ' + navigator.onLine, 'Recent errors:'].concat((window.__ccsErrs || []).slice(-8)).join('\n'); try { await navigator.clipboard.writeText(r); alert('Problem details copied. Paste them into a message to the developer.'); } catch (e) { prompt('Copy these details:', r); } setOpen(false); }} className={item}><i className="fas fa-bug w-4 text-gray-500"></i>Copy problem report</button>
+              <button onClick={async () => { const r = ['Chord Chart Studio 11.0.1', navigator.userAgent, new Date().toString(), 'Online: ' + navigator.onLine, 'Recent errors:'].concat((window.__ccsErrs || []).slice(-8)).join('\n'); try { await navigator.clipboard.writeText(r); alert('Problem details copied. Paste them into a message to the developer.'); } catch (e) { prompt('Copy these details:', r); } setOpen(false); }} className={item}><i className="fas fa-bug w-4 text-gray-500"></i>Copy problem report</button>
               <button data-testid="tour-open-menu" onClick={() => { setOpen(false); ccsOpenTour(); }} className={item + ' text-gray-700'}><i className="fas fa-circle-question w-4 text-gray-500"></i>Quick tour</button>
               <a href={ccsShareBase() + 'privacy.html'} target="_blank" rel="noopener noreferrer" className={item + ' text-gray-700'}><i className="fas fa-shield-halved w-4 text-gray-500"></i>Privacy policy</a>
               <a href={ccsShareBase() + 'terms.html'} target="_blank" rel="noopener noreferrer" className={item + ' text-gray-700'}><i className="fas fa-file-lines w-4 text-gray-500"></i>Terms of use</a>
@@ -3516,7 +3516,7 @@
       const [v, setV] = useState(() => { try { return localStorage.getItem('ccs_layout') || 'tidy'; } catch (e) { return 'tidy'; } });
       return <div className="flex flex-col items-start p-2.5 rounded-lg border border-gray-200 bg-gray-50 text-left">
         <div className="flex items-center justify-between w-full font-bold text-gray-800 gap-2"><span className="flex items-center gap-1"><i className="fas fa-table-columns text-amber-600 text-[11px]"></i> Layout</span>
-          <select data-testid="layout-select" value={v} onChange={e => { setV(e.target.value); try { localStorage.setItem('ccs_layout', e.target.value); } catch (x) {} ccsApplyLayout(e.target.value); }} className="bg-white border rounded px-1.5 py-0.5 text-xs font-black"><option value="tidy">Tidy</option><option value="classic">Classic</option></select></div>
+          <select data-testid="layout-select" value={v} onChange={e => { setV(e.target.value); try { localStorage.setItem('ccs_layout', e.target.value); } catch (x) {} ccsApplyLayout(e.target.value); }} className="bg-white border rounded px-1.5 py-0.5 text-xs font-black min-w-0 max-w-[55%]"><option value="tidy">Tidy</option><option value="classic">Classic</option></select></div>
         <span className="text-[10px] text-gray-500 mt-0.5">Tidy lines up the toolbars. Classic is the layout you had before.</span>
       </div>;
     }
@@ -7578,7 +7578,7 @@
                       <div className="flex flex-col items-start p-2.5 rounded-lg border border-gray-200 bg-gray-50 text-left">
                         <div className="flex items-center justify-between w-full font-bold text-gray-800">
                           <span className="flex items-center gap-1"><i className="fas fa-arrows-alt-v text-amber-600 text-[11px]"></i> Capo</span>
-                          <select value={capo} onChange={e=>setCapo(Number(e.target.value))} className="bg-white border rounded px-1.5 py-0.5 text-xs font-black">
+                          <select value={capo} onChange={e=>setCapo(Number(e.target.value))} className="bg-white border rounded px-1.5 py-0.5 text-xs font-black min-w-0 max-w-[55%]">
                             <option value={0}>0 (None)</option>
                             {[1,2,3,4,5,6,7,8,9,10,11].map(n => <option key={n} value={n}>Fret {n}</option>)}
                           </select>
@@ -7593,7 +7593,7 @@
                       <div className="flex flex-col items-start p-2.5 rounded-lg border border-gray-200 bg-gray-50 text-left">
                         <div className="flex items-center justify-between w-full font-bold text-gray-800 gap-2">
                           <span className="flex items-center gap-1"><i className="fas fa-music text-amber-600 text-[11px]"></i> Instrument</span>
-                          <select data-testid="instr-select" value={instr} onChange={e => setInstr(e.target.value)} className="bg-white border rounded px-1.5 py-0.5 text-xs font-black max-w-[8.5rem]">
+                          <select data-testid="instr-select" value={instr} onChange={e => setInstr(e.target.value)} className="bg-white border rounded px-1.5 py-0.5 text-xs font-black min-w-0 max-w-[55%]">
                             {Object.keys(CCS_INSTR).map(k => <option key={k} value={k}>{CCS_INSTR[k].short}</option>)}
                           </select>
                         </div>
@@ -7603,7 +7603,7 @@
                       <div className="flex flex-col items-start p-2.5 rounded-lg border border-gray-200 bg-gray-50 text-left">
                         <div className="flex items-center justify-between w-full font-bold text-gray-800 gap-2">
                           <span className="flex items-center gap-1"><i className="fas fa-font text-amber-600 text-[11px]"></i> Chord style</span>
-                          <select data-testid="cstyle-select" value={chordStyle} onChange={e => setChordStyle(e.target.value)} className="bg-white border rounded px-1.5 py-0.5 text-xs font-black">
+                          <select data-testid="cstyle-select" value={chordStyle} onChange={e => setChordStyle(e.target.value)} className="bg-white border rounded px-1.5 py-0.5 text-xs font-black min-w-0 max-w-[55%]">
                             <option value="std">Cmaj7 Cm7</option><option value="jazz">CΔ7 C-7</option><option value="words">Cmaj7 Cmin7</option>
                           </select>
                         </div>
@@ -7744,7 +7744,7 @@
 
                 {/* Modal Footer */}
                 <div className="px-4 py-2.5 border-t border-gray-200 bg-gray-50 flex items-center justify-between text-xs text-gray-500">
-                  <span>Chord Chart Studio Direct • v9.11</span>
+                  <span>Chord Chart Studio Direct • v{CCS_APP_VERSION}</span>
                   <button onClick={() => setShowAllToolsModal(false)} className="px-3 py-1 bg-black text-white font-bold rounded hover:bg-gray-800 transition-colors">
                     Done
                   </button>
