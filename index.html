@@ -13,7 +13,7 @@
   <meta property="og:type" content="website">
   <meta property="og:title" content="Chord Chart Studio">
   <meta property="og:description" content="Write, print and share chord charts. Edit songs live with your band, like a shared spreadsheet.">
-  <meta property="og:image" content="https://chordchartstudio-f2201.web.app/icon-512.png">
+  <meta property="og:image" content="https://sampatwardhan100-lab.github.io/ChordChartStudio/icon-512.png">
   <meta name="twitter:card" content="summary">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-192.png">
@@ -389,7 +389,7 @@
     // ============================================================================
     // CCS v8 core: data safety + three-way merge (spreadsheet-style live editing)
     // ============================================================================
-    const CCS_APP_VERSION = "11.0.1";
+    const CCS_APP_VERSION = "11.0.2";
     const ccsRid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
     const ccsEq = (a, b) => a === b || JSON.stringify(a) === JSON.stringify(b);
     const ccsClamp = (n, lo, hi, d) => (Number.isFinite(Number(n)) ? Math.min(hi, Math.max(lo, Number(n))) : d);
@@ -910,7 +910,7 @@
     const ROLE_LABEL = { owner: 'Owner', editor: 'Can edit', viewer: 'View only' };
     const isNativeApp = () => !!window.CCSNative;
     // Links must point at the hosted web app, never at file:// or the Android app's internal https://localhost.
-    const CCS_SHARE_BASE = 'https://chordchartstudio-f2201.web.app/';
+    const CCS_SHARE_BASE = 'https://sampatwardhan100-lab.github.io/ChordChartStudio/';
     const ccsShareBase = () => {
       const { protocol, hostname, origin, pathname } = window.location;
       if (!isNativeApp() && /^https?:$/.test(protocol) && hostname !== 'localhost' && hostname !== '127.0.0.1') return origin + pathname;
@@ -1079,7 +1079,7 @@
               {u.email && u.emailVerified === false && <div className="text-xs bg-amber-50 border border-amber-300 rounded-md p-2.5 mb-2">Email not verified. Verify it to accept invitations. <button className="text-blue-700 underline font-bold" onClick={() => auth.resendVerification().then(() => alert('Verification email sent.')).catch(e => alert(friendlyError(e)))}>Resend</button></div>}
               <button onClick={() => { const n = prompt('Your display name', userLabel(u)); if (n && n.trim()) auth.rename(n).catch(e => alert(friendlyError(e))); setOpen(false); }} className={item}><i className="fas fa-pen w-4 text-gray-500"></i>Change display name</button>
               <button onClick={async () => { try { const f = fbx(); const snap = await f.getDocs(f.query(f.collection(f.db, SONGS), f.where('memberUids', 'array-contains', u.uid))); const songs = []; snap.forEach(d => songs.push({ id: d.id, ...d.data() })); const blob = new Blob([JSON.stringify({ app: 'Chord Chart Studio', version: '9.11', exportedAt: new Date().toISOString(), songs }, null, 2)], { type: 'application/json' }); await ccsSaveFile('CCS_all_songs_' + new Date().toISOString().slice(0, 10) + '.json', blob); } catch (e) { alert('Could not back up: ' + friendlyError(e)); } setOpen(false); }} className={item}><i className="fas fa-box-archive w-4 text-gray-500"></i>Back up all my songs</button>
-              <button onClick={async () => { const r = ['Chord Chart Studio 11.0.1', navigator.userAgent, new Date().toString(), 'Online: ' + navigator.onLine, 'Recent errors:'].concat((window.__ccsErrs || []).slice(-8)).join('\n'); try { await navigator.clipboard.writeText(r); alert('Problem details copied. Paste them into a message to the developer.'); } catch (e) { prompt('Copy these details:', r); } setOpen(false); }} className={item}><i className="fas fa-bug w-4 text-gray-500"></i>Copy problem report</button>
+              <button onClick={async () => { const r = ['Chord Chart Studio 11.0.2', navigator.userAgent, new Date().toString(), 'Online: ' + navigator.onLine, 'Recent errors:'].concat((window.__ccsErrs || []).slice(-8)).join('\n'); try { await navigator.clipboard.writeText(r); alert('Problem details copied. Paste them into a message to the developer.'); } catch (e) { prompt('Copy these details:', r); } setOpen(false); }} className={item}><i className="fas fa-bug w-4 text-gray-500"></i>Copy problem report</button>
               <button data-testid="tour-open-menu" onClick={() => { setOpen(false); ccsOpenTour(); }} className={item + ' text-gray-700'}><i className="fas fa-circle-question w-4 text-gray-500"></i>Quick tour</button>
               <a href={ccsShareBase() + 'privacy.html'} target="_blank" rel="noopener noreferrer" className={item + ' text-gray-700'}><i className="fas fa-shield-halved w-4 text-gray-500"></i>Privacy policy</a>
               <a href={ccsShareBase() + 'terms.html'} target="_blank" rel="noopener noreferrer" className={item + ' text-gray-700'}><i className="fas fa-file-lines w-4 text-gray-500"></i>Terms of use</a>
@@ -3478,7 +3478,7 @@
       { icon: 'fa-file-import', title: 'Bring in your old charts', body: ['Import text or lyrics with chords, PDFs, and other chart files. Use Import many files for a whole folder at once.', 'Everything comes out in the same style. On a phone, open All tools (the menu) to find Import.'] },
       { icon: 'fa-file-pdf', title: 'Read PDFs like a score reader', body: ['Open PDF scores from All tools to keep PDFs and photos of sheet music exactly as they are. Read them full screen, switch to two pages on a big screen, crop margins, and write on them with Apple Pencil.', 'Make a song entry from a whole PDF, or just some pages, and it can sit in a setlist next to your charts. These files stay on this device.'] },
       { icon: 'fa-sliders', title: 'Make a chart fit you', body: ['Change Capo, switch between ABC and EZ notation, transpose the song, or view it for a Bb, Eb or F instrument.', 'These live in the tool row and in All tools.'] },
-      { icon: 'fa-list-ol', title: 'Setlists and gigs', body: ['Put songs in a setlist, jump between them, and press Perform for a full-screen gig view.', 'Page turns work with Bluetooth pedals and keyboards. Half-page turns are in Settings.'] },
+      { icon: 'fa-list-ol', title: 'Setlists and gigs', body: ['Put songs in a setlist, jump between them, and press Perform for a full-screen gig view.', 'Page turns work with Bluetooth pedals and keyboards. Half-page turns and pedal keys are in the song list panel inside Perform.'] },
       { icon: 'fa-headphones', title: 'Practise with audio', body: ['Add a recording or a YouTube link to any song. Loop bars, slow it down, and let the chart follow along.', 'Minimise the panel and a slim player bar stays at the bottom. Open Audio from All tools.'] },
       { icon: 'fa-user-group', title: 'Share with your band', body: ['Share sends the chart to your band, and Notes holds comments and your private notes.', 'Everyone sees the same chart without exporting and importing files.'] },
       { icon: 'fa-circle-question', title: 'That is it', body: ['Layout can be Tidy or Classic in All tools.', 'To see this tour again: open your account menu (your initial, top right) and choose Quick tour, or find Quick tour in All tools.'] },
